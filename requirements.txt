@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+openai
+langchain
+langchain-huggingface
+pdfplumber
+python-docx
+extract-msg
+faiss-cpu
+sentence-transformers
+python-dotenv
