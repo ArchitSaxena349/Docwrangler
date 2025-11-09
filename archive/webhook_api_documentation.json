@@ -1,0 +1,76 @@
+{
+  "webhook_api": {
+    "name": "LLM Insurance Document Processing API",
+    "description": "AI-powered webhook API for processing insurance claims and queries",
+    "version": "1.0.0",
+    "base_url": "https://[REPLACE-WITH-YOUR-TUNNEL-URL]",
+    "cors_enabled": true,
+    "authentication": "None (for testing)",
+    "content_type": "application/json"
+  },
+  "endpoints": {
+    "health_check": {
+      "method": "GET",
+      "path": "/webhook/health",
+      "description": "Check webhook service status",
+      "full_url": "https://[REPLACE-WITH-YOUR-TUNNEL-URL]/webhook/health"
+    },
+    "process_query": {
+      "method": "POST",
+      "path": "/webhook/query",
+      "description": "Process natural language insurance queries",
+      "full_url": "https://[REPLACE-WITH-YOUR-TUNNEL-URL]/webhook/query",
+      "request_example": {
+        "query": "46-year-old male, knee surgery, 3-month policy",
+        "context": {
+          "user_id": "test123"
+        }
+      },
+      "response_example": {
+        "status": "success",
+        "query": "46-year-old male, knee surgery, 3-month policy",
+        "decision": "approved",
+        "justification": "Medical procedure is typically covered",
+        "confidence": 0.85,
+        "amount": 50000,
+        "processing_time": 1.5
+      }
+    },
+    "insurance_claim": {
+      "method": "POST",
+      "path": "/webhook/insurance-claim",
+      "description": "Process structured insurance claims",
+      "full_url": "https://[REPLACE-WITH-YOUR-TUNNEL-URL]/webhook/insurance-claim",
+      "request_example": {
+        "claim_id": "CLM-2024-001",
+        "age": 46,
+        "gender": "male",
+        "procedure": "knee surgery",
+        "location": "Pune",
+        "policy_duration": "3 months",
+        "claim_amount": 50000
+      },
+      "response_example": {
+        "claim_id": "CLM-2024-001",
+        "status": "processed",
+        "decision": "approved",
+        "approved": true,
+        "coverage_amount": 50000,
+        "justification": "Surgery procedures are covered",
+        "confidence_score": 0.9
+      }
+    }
+  },
+  "test_commands": {
+    "health_check": "curl https://[REPLACE-WITH-YOUR-TUNNEL-URL]/webhook/health",
+    "query_test": "curl -X POST https://[REPLACE-WITH-YOUR-TUNNEL-URL]/webhook/query -H 'Content-Type: application/json' -d '{\"query\": \"46-year-old male, knee surgery\"}'",
+    "claim_test": "curl -X POST https://[REPLACE-WITH-YOUR-TUNNEL-URL]/webhook/insurance-claim -H 'Content-Type: application/json' -d '{\"age\": 46, \"gender\": \"male\", \"procedure\": \"knee surgery\"}'"
+  },
+  "features": [
+    "AI-powered analysis of 6 real insurance policies",
+    "Natural language query processing",
+    "Structured claim evaluation",
+    "Real-time decisions with confidence scores",
+    "CORS enabled for web integration"
+  ]
+}

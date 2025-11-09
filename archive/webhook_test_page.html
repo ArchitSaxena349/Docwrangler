@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Webhook API Tester</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .endpoint { background: #f5f5f5; padding: 20px; margin: 20px 0; border-radius: 5px; }
+        button { background: #007cba; color: white; padding: 10px 20px; border: none; border-radius: 3px; cursor: pointer; }
+        button:hover { background: #005a87; }
+        .result { background: #e8f4f8; padding: 15px; margin: 10px 0; border-radius: 3px; white-space: pre-wrap; }
+        input[type="text"] { width: 100%; padding: 8px; margin: 5px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>LLM Insurance Webhook API Tester</h1>
+        
+        <div>
+            <label>Webhook Base URL:</label>
+            <input type="text" id="baseUrl" placeholder="https://your-tunnel-url.loca.lt" />
+        </div>
+        
+        <div class="endpoint">
+            <h3>1. Health Check</h3>
+            <button onclick="testHealth()">Test Health Endpoint</button>
+            <div id="healthResult" class="result" style="display:none;"></div>
+        </div>
+        
+        <div class="endpoint">
+            <h3>2. Insurance Claim Test</h3>
+            <button onclick="testClaim()">Test Insurance Claim</button>
+            <div id="claimResult" class="result" style="display:none;"></div>
+        </div>
+        
+        <div class="endpoint">
+            <h3>3. Query Test</h3>
+            <button onclick="testQuery()">Test Query Processing</button>
+            <div id="queryResult" class="result" style="display:none;"></div>
+        </div>
+    </div>
+
+    <script>
+        async function testHealth() {
+            const baseUrl = document.getElementById('baseUrl').value;
+            if (!baseUrl) {
+                alert('Please enter the webhook base URL');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${baseUrl}/webhook/health`);
+                const result = await response.json();
+                
+                document.getElementById('healthResult').style.display = 'block';
+                document.getElementById('healthResult').textContent = JSON.stringify(result, null, 2);
+            } catch (error) {
+                document.getElementById('healthResult').style.display = 'block';
+                document.getElementById('healthResult').textContent = 'Error: ' + error.message;
+            }
+        }
+        
+        async function testClaim() {
+            const baseUrl = document.getElementById('baseUrl').value;
+            if (!baseUrl) {
+                alert('Please enter the webhook base URL');
+                return;
+            }
+            
+            const claimData = {
+                claim_id: "WEB-TEST-001",
+                age: 46,
+                gender: "male",
+                procedure: "knee surgery",
+                location: "Pune",
+                policy_duration: "3 months",
+                claim_amount: 50000
+            };
+            
+            try {
+                const response = await fetch(`${baseUrl}/webhook/insurance-claim`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(claimData)
+                });
+                
+                const result = await response.json();
+                
+                document.getElementById('claimResult').style.display = 'block';
+                document.getElementById('claimResult').textContent = JSON.stringify(result, null, 2);
+            } catch (error) {
+                document.getElementById('claimResult').style.display = 'block';
+                document.getElementById('claimResult').textContent = 'Error: ' + error.message;
+            }
+        }
+        
+        async function testQuery() {
+            const baseUrl = document.getElementById('baseUrl').value;
+            if (!baseUrl) {
+                alert('Please enter the webhook base URL');
+                return;
+            }
+            
+            const queryData = {
+                query: "46-year-old male, knee surgery, 3-month policy",
+                context: { test: "web_interface" }
+            };
+            
+            try {
+                const response = await fetch(`${baseUrl}/webhook/query`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(queryData)
+                });
+                
+                const result = await response.json();
+                
+                document.getElementById('queryResult').style.display = 'block';
+                document.getElementById('queryResult').textContent = JSON.stringify(result, null, 2);
+            } catch (error) {
+                document.getElementById('queryResult').style.display = 'block';
+                document.getElementById('queryResult').textContent = 'Error: ' + error.message;
+            }
+        }
+    </script>
+</body>
+</html>
