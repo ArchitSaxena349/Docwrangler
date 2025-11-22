@@ -1,6 +1,6 @@
 import re
 from typing import Dict, Any, List
-from openai import OpenAI
+import google.generativeai as genai
 from core.models import ParsedQuery, QueryType
 from core.config import Config
 
@@ -8,7 +8,8 @@ class QueryParser:
     """Parse natural language queries into structured data"""
     
     def __init__(self):
-        self.client = OpenAI(api_key=Config.OPENAI_API_KEY)
+        genai.configure(api_key=Config.GEMINI_API_KEY)
+        self.model = genai.GenerativeModel(Config.GEMINI_MODEL)
     
     def parse_query(self, query: str) -> ParsedQuery:
         """Parse natural language query into structured format"""
@@ -86,14 +87,17 @@ class QueryParser:
         """
         
         try:
-            response = self.client.chat.completions.create(
-                model=Config.OPENAI_MODEL,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.1
-            )
+            response = self.model.generate_content(prompt)
             
             import json
-            return json.loads(response.choices[0].message.content)
+            # Extract JSON from response
+            text = response.text
+            # Try to find JSON in the response
+            json_start = text.find('{')
+            json_end = text.rfind('}') + 1
+            if json_start != -1 and json_end > json_start:
+                return json.loads(text[json_start:json_end])
+            return {}
         except:
             return {}
     

@@ -1,7 +1,7 @@
 import chromadb
 from chromadb.config import Settings
 from typing import List, Dict, Any, Optional
-from openai import OpenAI
+from sentence_transformers import SentenceTransformer
 from core.models import DocumentChunk, RetrievalResult
 from core.config import Config
 
@@ -17,7 +17,8 @@ class VectorStore:
             name=Config.COLLECTION_NAME,
             metadata={"hnsw:space": "cosine"}
         )
-        self.openai_client = OpenAI(api_key=Config.OPENAI_API_KEY)
+        # Use local embedding model
+        self.embedding_model = SentenceTransformer(Config.EMBEDDING_MODEL)
     
     def add_documents(self, chunks: List[DocumentChunk]) -> None:
         """Add document chunks to vector store"""
@@ -93,13 +94,10 @@ class VectorStore:
         return self.collection.count()
     
     def _generate_embeddings(self, texts: List[str]) -> List[List[float]]:
-        """Generate embeddings using OpenAI"""
+        """Generate embeddings using local model"""
         try:
-            response = self.openai_client.embeddings.create(
-                model=Config.EMBEDDING_MODEL,
-                input=texts
-            )
-            return [embedding.embedding for embedding in response.data]
+            embeddings = self.embedding_model.encode(texts)
+            return embeddings.tolist()
         except Exception as e:
             raise Exception(f"Error generating embeddings: {str(e)}")
     

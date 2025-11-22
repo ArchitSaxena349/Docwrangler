@@ -11,9 +11,9 @@ class Config:
     location used by the example scripts.
     """
 
-    # OpenAI / LLM
-    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-    OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4")
+    # Gemini / LLM
+    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+    GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
     EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
 
     # Vector DB

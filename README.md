@@ -1,6 +1,5 @@
 # 🏥 LLM DocWrangler — Insurance Document Processing
 
-[![CI](https://github.com/OWNER/REPO/actions/workflows/ci.yml/badge.svg)](https://github.com/OWNER/REPO/actions/workflows/ci.yml)
 
 Comprehensive, practical README for developers and contributors. This project extracts, indexes, and answers
 questions about insurance documents using local embeddings and optional OpenAI completions. It's intended as a
@@ -9,7 +8,6 @@ developer-friendly reference implementation and evaluation harness.
 Contents
 - What this repo does
 - Quick start (venv)
-- Recommended full setup (conda)
 - Project layout and key files
 - Running the example scripts and webhook
 - Data and vector store handling
@@ -21,7 +19,6 @@ What this repo does
 -------------------
 - Extracts text from PDF insurance policies (see `data/`)
 - Builds local embeddings (SentenceTransformers) and stores them in a ChromaDB vector store
-- Provides small example scripts to run queries and offline analysis (`tests/local_embedding_test.py`, `tests/offline_pdf_analyzer.py`)
 - Exposes a minimal webhook API (`webhook/basic_webhook_server.py`) for demoing the service
 
 Quick start (lightweight, PowerShell)
@@ -42,12 +39,6 @@ This is the fastest way to run the example scripts locally. It installs a safe s
 & .\.venv\Scripts\python.exe -m pip install pytest pypdf2 chromadb sentence-transformers
 ```
 
-3) Run the example scripts (these process PDFs in `data/` and create a vector store in `data/vector_store`):
-
-```powershell
-& .\.venv\Scripts\python.exe tests/local_embedding_test.py
-& .\.venv\Scripts\python.exe tests/offline_pdf_analyzer.py
-```
 
 4) Start the webhook (background or interactive):
 
@@ -56,18 +47,6 @@ This is the fastest way to run the example scripts locally. It installs a safe s
 # Then visit: http://localhost:8001/webhook/health
 ```
 
-Recommended (full, reproducible) — use conda/mamba
--------------------------------------------------
-We provide a Windows-friendly Conda environment that installs heavy/native packages via Conda and the rest via pip.
-
-PowerShell commands:
-
-```powershell
-conda env create -f environment.yml
-conda activate llm-docwrangler
-```
-
-This avoids building native packages from source on Windows and yields a stable, reproducible environment.
 
 Project layout (high level)
 ---------------------------
@@ -78,15 +57,11 @@ Project layout (high level)
   - `src/retrieval/` — vector store wrapper (Chroma)
 - `data/` — source PDFs and runtime generated stores
   - `data/vector_store/` — centralized location for Chroma DB files (ignored by Git)
-- `tests/` — example scripts and quick analyzers (not pytest-style unit tests)
 - `webhook/` — simple demo webhook server
-- `scripts/` — small helper scripts (create venv, run tests)
 
 Key files you’ll use
-- `tests/local_embedding_test.py` — builds local embeddings, populates the vector store, runs queries
-- `tests/offline_pdf_analyzer.py` — simpler rule-based analyzer (no ML required beyond PDF parsing)
 - `webhook/basic_webhook_server.py` — minimal webhook to demonstrate endpoints and payloads
-- `core/requirements.txt` — full pinned requirements (use with caution on Windows; prefer conda)
+- `requirements.txt` — full pinned requirements (use with caution on Windows; prefer conda)
 
 Vector store & data handling
 ---------------------------
@@ -106,14 +81,12 @@ Environment variables & secrets
 
 Troubleshooting & common notes
 ------------------------------
-- Pandas / numpy on Windows: pinned `pandas==2.1.4` in `core/requirements.txt` expects `numpy<2,>=1.26` which often requires a compiler to build on Windows. Use conda/mamba to obtain binary wheels.
+- Pandas / numpy on Windows: pinned `pandas==2.1.4` in `requirements.txt` expects `numpy<2,>=1.26` which often requires a compiler to build on Windows. Use conda/mamba to obtain binary wheels.
 - If a package install fails while building native extensions, prefer creating a conda environment and installing from `conda-forge`.
 - If the webhook health endpoint fails, make sure no other process is listening on the port (default 8001). You can change the port in `webhook/basic_webhook_server.py`.
 
 Developer tips
 --------------
-- Centralize configuration (optional): if you plan to move the vector store or change defaults, add a `VECTOR_STORE_PATH` constant in `core/config.py` and reference it from the code (current code points to `data/vector_store/local_chroma_db`).
-- Add CI: a lightweight GitHub Actions workflow could run `tests/offline_pdf_analyzer.py` on push using a minimal Python environment.
 
 Cleaning up
 -----------
@@ -132,10 +105,6 @@ License
 -------
 This repository does not include a license file. Add `LICENSE` if you intend to open-source the project and choose a license.
 
-Continuous Integration
-----------------------
-- A GitHub Actions workflow (`.github/workflows/ci.yml`) runs the verification scripts on push/PR using the Conda environment.
-- Replace `OWNER/REPO` in the badge URL at the top of this README with your GitHub org/repo to enable the status badge.
 
 
 ## 📄 Example Usage
@@ -161,10 +130,6 @@ curl -X POST http://localhost:8001/webhook/insurance-claim \
 ├── core/           # Configuration and models
 ├── webhook/        # Webhook server and API
 ├── data/          # Insurance policy PDFs
-├── tests/         # Test scripts
-├── src/           # Source code modules
-├── docs/          # Documentation
-└── config/        # Configuration templates
 ```
 
 ## 🎯 Ready For

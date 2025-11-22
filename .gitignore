@@ -16,5 +16,13 @@ Thumbs.db
 .vscode/
 .idea/
 
+# Logs
+*.log
+
+# Python build artifacts
+build/
+dist/
+*.egg-info/
+
 # Centralized vector store location
 data/vector_store/

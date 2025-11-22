@@ -1,5 +1,5 @@
 from typing import List, Dict, Any
-from openai import OpenAI
+import google.generativeai as genai
 from core.models import ParsedQuery, RetrievalResult, DecisionResult
 from core.config import Config
 import json
@@ -8,7 +8,8 @@ class DecisionEvaluator:
     """Evaluate queries against retrieved documents to make decisions"""
     
     def __init__(self):
-        self.client = OpenAI(api_key=Config.OPENAI_API_KEY)
+        genai.configure(api_key=Config.GEMINI_API_KEY)
+        self.model = genai.GenerativeModel(Config.GEMINI_MODEL)
     
     def evaluate(self, parsed_query: ParsedQuery, 
                 retrieved_docs: List[RetrievalResult]) -> DecisionResult:
@@ -29,17 +30,18 @@ class DecisionEvaluator:
         decision_prompt = self._create_decision_prompt(parsed_query, context)
         
         try:
-            response = self.client.chat.completions.create(
-                model=Config.OPENAI_MODEL,
-                messages=[
-                    {"role": "system", "content": self._get_system_prompt()},
-                    {"role": "user", "content": decision_prompt}
-                ],
-                temperature=0.1
-            )
+            # Combine system prompt and user prompt for Gemini
+            full_prompt = f"{self._get_system_prompt()}\n\n{decision_prompt}"
+            response = self.model.generate_content(full_prompt)
             
-            # Parse LLM response
-            decision_data = json.loads(response.choices[0].message.content)
+            # Parse response - extract JSON
+            text = response.text
+            json_start = text.find('{')
+            json_end = text.rfind('}') + 1
+            if json_start != -1 and json_end > json_start:
+                decision_data = json.loads(text[json_start:json_end])
+            else:
+                decision_data = {}
             
             return DecisionResult(
                 decision=decision_data.get("decision", "pending"),
