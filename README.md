@@ -34,23 +34,6 @@ This is the fastest way to run the example scripts locally. It installs a safe s
 
 2) Upgrade packaging tools and install minimal runtime packages:
 
-```powershell
-& .\.venv\Scripts\python.exe -m pip install --upgrade pip setuptools wheel
-& .\.venv\Scripts\python.exe -m pip install pytest pypdf2 chromadb sentence-transformers
-```
-
-
-4) Start the webhook (background or interactive):
-
-```powershell
-& .\.venv\Scripts\python.exe webhook/basic_webhook_server.py
-# Then visit: http://localhost:8001/webhook/health
-```
-
-
-Project layout (high level)
----------------------------
-- `core/` — core configuration and shared models (requirements.txt lives here)
 - `src/` — main application code (API, document processors, retrieval, services)
   - `src/api/` — webhook routing and API glue
   - `src/document_processor/` — PDF/Word/email processors
