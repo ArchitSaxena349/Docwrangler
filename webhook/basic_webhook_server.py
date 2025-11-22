@@ -5,6 +5,7 @@ Basic webhook server that definitely works
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import json
 import time
+import os
 from datetime import datetime
 from typing import Dict, Any
 import urllib.parse
@@ -218,7 +219,10 @@ class WebhookHandler(BaseHTTPRequestHandler):
         timestamp = datetime.now().strftime('%H:%M:%S')
         print(f"[{timestamp}] {format % args}")
 
-def start_webhook_server(port=8001):
+def start_webhook_server(port=None):
+    # Read port from environment (Render provides PORT) or use default
+    if port is None:
+        port = int(os.getenv('PORT', 8001))
     """Start the webhook server"""
     print(f"🚀 Starting Basic Webhook Server")
     print(f"="*40)
@@ -231,7 +235,7 @@ def start_webhook_server(port=8001):
     print(f"="*40)
     
     try:
-        server = HTTPServer(('localhost', port), WebhookHandler)
+        server = HTTPServer(('0.0.0.0', port), WebhookHandler)
         print(f"✅ Server running on http://localhost:{port}")
         print(f"💡 Press Ctrl+C to stop the server")
         print(f"🧪 Test with: python test_simple_webhooks.py")

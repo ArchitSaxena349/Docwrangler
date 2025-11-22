@@ -2,7 +2,7 @@
 
 
 Comprehensive, practical README for developers and contributors. This project extracts, indexes, and answers
-questions about insurance documents using local embeddings and optional OpenAI completions. It's intended as a
+questions about insurance documents using local embeddings and Google's Gemini API. It's intended as a
 developer-friendly reference implementation and evaluation harness.
 
 Contents
