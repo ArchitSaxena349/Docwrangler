@@ -28,8 +28,8 @@ class VectorStore:
                 name=Config.COLLECTION_NAME,
                 metadata={"hnsw:space": "cosine"}
             )
-            # Use local embedding model
-            self.embedding_model = SentenceTransformer(Config.EMBEDDING_MODEL)
+            # Lazy load embedding model
+            self.embedding_model = None
         else:
             logger.warning("VectorStore initialized in lightweight mode. Vector operations will be mocked.")
     
@@ -127,6 +127,10 @@ class VectorStore:
             return [[0.0] * 384] * len(texts) # Mock embedding
 
         try:
+            if self.embedding_model is None:
+                logger.info(f"Loading embedding model: {Config.EMBEDDING_MODEL}")
+                self.embedding_model = SentenceTransformer(Config.EMBEDDING_MODEL)
+                
             embeddings = self.embedding_model.encode(texts)
             return embeddings.tolist()
         except Exception as e:
