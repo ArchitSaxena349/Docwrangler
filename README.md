@@ -53,7 +53,7 @@ Use this for deployment (e.g., Render) to enable Vector Store features.
   - `GEMINI_API_KEY`: Your Google Gemini API Key
   - `GEMINI_MODEL`: `gemini-1.5-flash` (default)
   - `APP_API_KEY`: (Optional) Secret key for protecting `/api/*` endpoints
-  - `PYTHON_VERSION`: `3.11.0` (Recommended)
+  - `PYTHON_VERSION`: `3.11.9` (Required for compatibility)
 
 ## 📂 Project Structure
 
