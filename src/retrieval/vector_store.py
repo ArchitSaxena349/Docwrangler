@@ -5,15 +5,8 @@ from core.config import Config
 
 logger = logging.getLogger(__name__)
 
-# Conditional imports for heavy dependencies
-try:
-    import chromadb
-    from chromadb.config import Settings
-    from sentence_transformers import SentenceTransformer
-    HEAVY_DEPS_AVAILABLE = True
-except ImportError as e:
-    logger.warning(f"Heavy dependencies not found: {e}. Running in lightweight mode.")
-    HEAVY_DEPS_AVAILABLE = False
+# Global flag, will be updated in _ensure_initialized
+HEAVY_DEPS_AVAILABLE = True
 
 class VectorStore:
     """Vector database for document storage and retrieval"""
@@ -22,9 +15,24 @@ class VectorStore:
         self.client = None
         self.collection = None
         self.embedding_model = None
+        self._heavy_deps_checked = False
         
     def _ensure_initialized(self):
         """Lazy initialize resources"""
+        global HEAVY_DEPS_AVAILABLE
+        
+        if not self._heavy_deps_checked:
+            try:
+                global chromadb, Settings, SentenceTransformer
+                import chromadb
+                from chromadb.config import Settings
+                from sentence_transformers import SentenceTransformer
+                HEAVY_DEPS_AVAILABLE = True
+            except ImportError as e:
+                logger.warning(f"Heavy dependencies not found: {e}. Running in lightweight mode.")
+                HEAVY_DEPS_AVAILABLE = False
+            self._heavy_deps_checked = True
+
         if not HEAVY_DEPS_AVAILABLE:
             return
 
@@ -45,14 +53,14 @@ class VectorStore:
     
     def add_documents(self, chunks: List[DocumentChunk]) -> None:
         """Add document chunks to vector store"""
+        self._ensure_initialized()
+        
         if not HEAVY_DEPS_AVAILABLE:
             logger.warning("add_documents ignored in lightweight mode")
             return
 
         if not chunks:
             return
-            
-        self._ensure_initialized()
         
         # Generate embeddings
         texts = [chunk.content for chunk in chunks]
@@ -78,11 +86,11 @@ class VectorStore:
     def search(self, query: str, top_k: int = None, 
                document_ids: Optional[List[str]] = None) -> List[RetrievalResult]:
         """Search for relevant documents"""
+        self._ensure_initialized()
+        
         if not HEAVY_DEPS_AVAILABLE:
             logger.warning("search ignored in lightweight mode")
             return []
-
-        self._ensure_initialized()
 
         if top_k is None:
             top_k = Config.TOP_K_RESULTS
@@ -123,27 +131,29 @@ class VectorStore:
     
     def delete_document(self, document_id: str) -> None:
         """Delete all chunks for a document"""
+        self._ensure_initialized()
+        
         if not HEAVY_DEPS_AVAILABLE:
             logger.warning("delete_document ignored in lightweight mode")
             return
 
-        self._ensure_initialized()
         self.collection.delete(where={"document_id": document_id})
     
     def get_document_count(self) -> int:
         """Get total number of documents in store"""
+        self._ensure_initialized()
+        
         if not HEAVY_DEPS_AVAILABLE:
             return 0
             
-        self._ensure_initialized()
         return self.collection.count()
     
     def _generate_embeddings(self, texts: List[str]) -> List[List[float]]:
         """Generate embeddings using local model"""
+        # _ensure_initialized is called by public methods
         if not HEAVY_DEPS_AVAILABLE:
             return [[0.0] * 384] * len(texts) # Mock embedding
 
-        self._ensure_initialized()
         try:
             embeddings = self.embedding_model.encode(texts)
             return embeddings.tolist()
@@ -152,10 +162,11 @@ class VectorStore:
     
     def list_documents(self) -> List[str]:
         """List all document IDs in the store"""
+        self._ensure_initialized()
+        
         if not HEAVY_DEPS_AVAILABLE:
             return []
 
-        self._ensure_initialized()
         results = self.collection.get(include=['metadatas'])
         document_ids = set()
         if results['metadatas']:
