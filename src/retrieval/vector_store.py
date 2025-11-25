@@ -19,7 +19,17 @@ class VectorStore:
     """Vector database for document storage and retrieval"""
     
     def __init__(self):
-        if HEAVY_DEPS_AVAILABLE:
+        self.client = None
+        self.collection = None
+        self.embedding_model = None
+        
+    def _ensure_initialized(self):
+        """Lazy initialize resources"""
+        if not HEAVY_DEPS_AVAILABLE:
+            return
+
+        if self.client is None:
+            logger.info("Initializing ChromaDB client...")
             self.client = chromadb.PersistentClient(
                 path=Config.CHROMA_PERSIST_DIRECTORY,
                 settings=Settings(anonymized_telemetry=False)
@@ -28,10 +38,10 @@ class VectorStore:
                 name=Config.COLLECTION_NAME,
                 metadata={"hnsw:space": "cosine"}
             )
-            # Lazy load embedding model
-            self.embedding_model = None
-        else:
-            logger.warning("VectorStore initialized in lightweight mode. Vector operations will be mocked.")
+            
+        if self.embedding_model is None:
+            logger.info(f"Loading embedding model: {Config.EMBEDDING_MODEL}")
+            self.embedding_model = SentenceTransformer(Config.EMBEDDING_MODEL)
     
     def add_documents(self, chunks: List[DocumentChunk]) -> None:
         """Add document chunks to vector store"""
@@ -41,6 +51,8 @@ class VectorStore:
 
         if not chunks:
             return
+            
+        self._ensure_initialized()
         
         # Generate embeddings
         texts = [chunk.content for chunk in chunks]
@@ -69,6 +81,8 @@ class VectorStore:
         if not HEAVY_DEPS_AVAILABLE:
             logger.warning("search ignored in lightweight mode")
             return []
+
+        self._ensure_initialized()
 
         if top_k is None:
             top_k = Config.TOP_K_RESULTS
@@ -113,12 +127,15 @@ class VectorStore:
             logger.warning("delete_document ignored in lightweight mode")
             return
 
+        self._ensure_initialized()
         self.collection.delete(where={"document_id": document_id})
     
     def get_document_count(self) -> int:
         """Get total number of documents in store"""
         if not HEAVY_DEPS_AVAILABLE:
             return 0
+            
+        self._ensure_initialized()
         return self.collection.count()
     
     def _generate_embeddings(self, texts: List[str]) -> List[List[float]]:
@@ -126,11 +143,8 @@ class VectorStore:
         if not HEAVY_DEPS_AVAILABLE:
             return [[0.0] * 384] * len(texts) # Mock embedding
 
+        self._ensure_initialized()
         try:
-            if self.embedding_model is None:
-                logger.info(f"Loading embedding model: {Config.EMBEDDING_MODEL}")
-                self.embedding_model = SentenceTransformer(Config.EMBEDDING_MODEL)
-                
             embeddings = self.embedding_model.encode(texts)
             return embeddings.tolist()
         except Exception as e:
@@ -141,6 +155,7 @@ class VectorStore:
         if not HEAVY_DEPS_AVAILABLE:
             return []
 
+        self._ensure_initialized()
         results = self.collection.get(include=['metadatas'])
         document_ids = set()
         if results['metadatas']:
