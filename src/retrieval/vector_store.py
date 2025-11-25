@@ -1,27 +1,44 @@
-import chromadb
-from chromadb.config import Settings
+import logging
 from typing import List, Dict, Any, Optional
-from sentence_transformers import SentenceTransformer
 from core.models import DocumentChunk, RetrievalResult
 from core.config import Config
+
+logger = logging.getLogger(__name__)
+
+# Conditional imports for heavy dependencies
+try:
+    import chromadb
+    from chromadb.config import Settings
+    from sentence_transformers import SentenceTransformer
+    HEAVY_DEPS_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"Heavy dependencies not found: {e}. Running in lightweight mode.")
+    HEAVY_DEPS_AVAILABLE = False
 
 class VectorStore:
     """Vector database for document storage and retrieval"""
     
     def __init__(self):
-        self.client = chromadb.PersistentClient(
-            path=Config.CHROMA_PERSIST_DIRECTORY,
-            settings=Settings(anonymized_telemetry=False)
-        )
-        self.collection = self.client.get_or_create_collection(
-            name=Config.COLLECTION_NAME,
-            metadata={"hnsw:space": "cosine"}
-        )
-        # Use local embedding model
-        self.embedding_model = SentenceTransformer(Config.EMBEDDING_MODEL)
+        if HEAVY_DEPS_AVAILABLE:
+            self.client = chromadb.PersistentClient(
+                path=Config.CHROMA_PERSIST_DIRECTORY,
+                settings=Settings(anonymized_telemetry=False)
+            )
+            self.collection = self.client.get_or_create_collection(
+                name=Config.COLLECTION_NAME,
+                metadata={"hnsw:space": "cosine"}
+            )
+            # Use local embedding model
+            self.embedding_model = SentenceTransformer(Config.EMBEDDING_MODEL)
+        else:
+            logger.warning("VectorStore initialized in lightweight mode. Vector operations will be mocked.")
     
     def add_documents(self, chunks: List[DocumentChunk]) -> None:
         """Add document chunks to vector store"""
+        if not HEAVY_DEPS_AVAILABLE:
+            logger.warning("add_documents ignored in lightweight mode")
+            return
+
         if not chunks:
             return
         
@@ -49,6 +66,10 @@ class VectorStore:
     def search(self, query: str, top_k: int = None, 
                document_ids: Optional[List[str]] = None) -> List[RetrievalResult]:
         """Search for relevant documents"""
+        if not HEAVY_DEPS_AVAILABLE:
+            logger.warning("search ignored in lightweight mode")
+            return []
+
         if top_k is None:
             top_k = Config.TOP_K_RESULTS
         
@@ -70,31 +91,41 @@ class VectorStore:
         
         # Convert to RetrievalResult objects
         retrieval_results = []
-        for i in range(len(results['ids'][0])):
-            similarity_score = 1 - results['distances'][0][i]  # Convert distance to similarity
-            
-            if similarity_score >= Config.SIMILARITY_THRESHOLD:
-                result = RetrievalResult(
-                    chunk_id=results['ids'][0][i],
-                    document_id=results['metadatas'][0][i]['document_id'],
-                    content=results['documents'][0][i],
-                    similarity_score=similarity_score,
-                    metadata=results['metadatas'][0][i]
-                )
-                retrieval_results.append(result)
+        if results['ids'] and len(results['ids']) > 0:
+            for i in range(len(results['ids'][0])):
+                similarity_score = 1 - results['distances'][0][i]  # Convert distance to similarity
+                
+                if similarity_score >= Config.SIMILARITY_THRESHOLD:
+                    result = RetrievalResult(
+                        chunk_id=results['ids'][0][i],
+                        document_id=results['metadatas'][0][i]['document_id'],
+                        content=results['documents'][0][i],
+                        similarity_score=similarity_score,
+                        metadata=results['metadatas'][0][i]
+                    )
+                    retrieval_results.append(result)
         
         return retrieval_results
     
     def delete_document(self, document_id: str) -> None:
         """Delete all chunks for a document"""
+        if not HEAVY_DEPS_AVAILABLE:
+            logger.warning("delete_document ignored in lightweight mode")
+            return
+
         self.collection.delete(where={"document_id": document_id})
     
     def get_document_count(self) -> int:
         """Get total number of documents in store"""
+        if not HEAVY_DEPS_AVAILABLE:
+            return 0
         return self.collection.count()
     
     def _generate_embeddings(self, texts: List[str]) -> List[List[float]]:
         """Generate embeddings using local model"""
+        if not HEAVY_DEPS_AVAILABLE:
+            return [[0.0] * 384] * len(texts) # Mock embedding
+
         try:
             embeddings = self.embedding_model.encode(texts)
             return embeddings.tolist()
@@ -103,8 +134,12 @@ class VectorStore:
     
     def list_documents(self) -> List[str]:
         """List all document IDs in the store"""
+        if not HEAVY_DEPS_AVAILABLE:
+            return []
+
         results = self.collection.get(include=['metadatas'])
         document_ids = set()
-        for metadata in results['metadatas']:
-            document_ids.add(metadata['document_id'])
+        if results['metadatas']:
+            for metadata in results['metadatas']:
+                document_ids.add(metadata['document_id'])
         return list(document_ids)

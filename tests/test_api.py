@@ -85,10 +85,15 @@ def test_webhook_document_upload_endpoint(client):
         "callback_url": "https://example.com/callback",
         "metadata": {"source": "test"}
     }
-    response = client.post("/webhook/document-upload", json=payload)
+    
+    # Patch os.path.exists to simulate file existence
+    import unittest.mock
+    with unittest.mock.patch("os.path.exists", return_value=True):
+        response = client.post("/webhook/document-upload", json=payload)
+        
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == "received"
+    assert data["status"] == "processed"
     assert "document_id" in data
 
 

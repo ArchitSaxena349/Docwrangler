@@ -26,7 +26,9 @@ def test_insurance_claim_workflow(client, sample_claim_payload):
     assert response.status_code == 200
     
     data = response.json()
-    assert data["status"] == "processed"
+    if "decision" not in data:
+        print(f"DEBUG: Response data: {data}")
+    assert data["status"] == "processed", f"Status failed. Message: {data.get('message')}"
     assert data["claim_id"] == sample_claim_payload["claim_id"]
     assert "decision" in data
     assert "coverage_amount" in data

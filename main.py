@@ -1,12 +1,14 @@
 """
 Main FastAPI application entry point for LLM DocWrangler
 """
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException, Depends, Security
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security.api_key import APIKeyHeader
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 import time
 from datetime import datetime
+import os
 
 from src.api import routes
 from src.api.health import router as health_router
@@ -14,11 +16,38 @@ from src.api.middleware import RequestLoggingMiddleware
 from src.api.exceptions import setup_exception_handlers
 from src.utils.logger import get_logger, setup_logging
 from core.config import Config
+from core.models import QueryRequest, QueryType
+
+# Import services
+from src.services.query_service import QueryService
+from src.services.document_service import DocumentService
 
 # Setup logging
 setup_logging()
 logger = get_logger(__name__)
 
+# Initialize services
+query_service = None
+document_service = None
+
+# API Key Security
+API_KEY_NAME = "x-api-key"
+api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
+
+async def get_api_key(api_key_header: str = Security(api_key_header)):
+    """Validate API Key"""
+    # If no API key is set in env, allow all (dev mode)
+    expected_key = os.getenv("APP_API_KEY")
+    if not expected_key:
+        return None
+        
+    if api_key_header == expected_key:
+        return api_key_header
+        
+    raise HTTPException(
+        status_code=403,
+        detail="Could not validate credentials"
+    )
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -28,6 +57,15 @@ async def lifespan(app: FastAPI):
     logger.info(f"Gemini Model: {Config.GEMINI_MODEL}")
     logger.info(f"Embedding Model: {Config.EMBEDDING_MODEL}")
     logger.info(f"Vector Store: {Config.CHROMA_PERSIST_DIRECTORY}")
+    
+    # Initialize services
+    global query_service, document_service
+    try:
+        query_service = QueryService()
+        document_service = DocumentService()
+        logger.info("Services initialized successfully")
+    except Exception as e:
+        logger.error(f"Error initializing services: {e}")
     
     yield
     
@@ -60,15 +98,23 @@ setup_exception_handlers(app)
 
 # Include routers
 app.include_router(health_router, tags=["health"])
-app.include_router(routes.router, prefix="/api", tags=["api"])
+# Protect API routes with API Key
+app.include_router(
+    routes.router, 
+    prefix="/api", 
+    tags=["api"],
+    dependencies=[Depends(get_api_key)]
+)
 
 # Webhook-compatible routes (for backward compatibility)
+# These are now powered by the real services!
+
 @app.get("/webhook/health")
 async def webhook_health():
     """Webhook health check endpoint (backward compatible)"""
     return {
         "status": "healthy",
-        "service": "Basic LLM Document Processing Webhook",
+        "service": "LLM Document Processing Webhook (FastAPI)",
         "timestamp": datetime.utcnow().isoformat(),
         "endpoints": [
             "/webhook/health",
@@ -81,132 +127,143 @@ async def webhook_health():
 
 @app.post("/webhook/query")
 async def webhook_query(request: Request):
-    """Webhook query endpoint (backward compatible)"""
-    payload = await request.json()
-    query = payload.get('query', '')
-    context = payload.get('context', {})
-    
-    logger.info(f"Processing webhook query: {query}")
-    
-    # Simple mock analysis (same as old webhook)
-    query_lower = query.lower()
-    
-    if any(word in query_lower for word in ['surgery', 'operation', 'procedure']):
-        decision = "approved"
-        confidence = 0.85
-        amount = 50000
-        justification = f"Medical procedure '{query}' is typically covered under standard health insurance policies."
-    elif any(word in query_lower for word in ['dental', 'teeth']):
-        decision = "pending"
-        confidence = 0.60
-        amount = 15000
-        justification = f"Dental procedures may require waiting period verification. Query: {query}"
-    elif any(word in query_lower for word in ['maternity', 'pregnancy']):
-        decision = "approved"
-        confidence = 0.75
-        amount = 75000
-        justification = f"Maternity benefits are covered after waiting period. Query: {query}"
-    else:
-        decision = "pending"
-        confidence = 0.50
-        amount = None
-        justification = f"Query requires manual review for proper assessment: {query}"
-    
-    return {
-        "status": "success",
-        "query": query,
-        "decision": decision,
-        "justification": justification,
-        "confidence": confidence,
-        "amount": amount,
-        "source_clauses": ["mock_section_1", "mock_section_2"],
-        "processing_time": round(time.time() % 10, 2),
-        "timestamp": datetime.utcnow().isoformat(),
-        "context": context
-    }
+    """Webhook query endpoint (powered by Gemini)"""
+    try:
+        payload = await request.json()
+        query_text = payload.get('query', '')
+        context = payload.get('context', {})
+        
+        logger.info(f"Processing webhook query: {query_text}")
+        
+        if not query_service:
+            raise HTTPException(status_code=503, detail="Query service not initialized")
+            
+        # Create request object
+        query_request = QueryRequest(
+            query=query_text,
+            context=context,
+            query_type=QueryType.GENERAL
+        )
+        
+        # Process using real service
+        result = await query_service.process_query(query_request)
+        
+        # Map response to match old webhook format
+        return {
+            "status": "success",
+            "query": result.query,
+            "decision": result.decision.decision,
+            "justification": result.decision.justification,
+            "confidence": result.decision.confidence_score,
+            "amount": result.decision.amount,
+            "source_clauses": result.decision.source_clauses,
+            "processing_time": result.processing_time,
+            "timestamp": datetime.utcnow().isoformat(),
+            "context": context
+        }
+    except Exception as e:
+        logger.error(f"Error in webhook query: {e}")
+        return {
+            "status": "error",
+            "message": str(e),
+            "timestamp": datetime.utcnow().isoformat()
+        }
 
 
 @app.post("/webhook/insurance-claim")
 async def webhook_insurance_claim(request: Request):
-    """Webhook insurance claim endpoint (backward compatible)"""
-    payload = await request.json()
-    
-    claim_id = payload.get('claim_id', f"CLM-{int(time.time())}")
-    age = payload.get('age', 0)
-    gender = payload.get('gender', '')
-    procedure = payload.get('procedure', '')
-    location = payload.get('location', '')
-    policy_duration = payload.get('policy_duration', '')
-    claim_amount = payload.get('claim_amount', 0)
-    
-    logger.info(f"Processing insurance claim: {claim_id}")
-    
-    procedure_lower = procedure.lower()
-    
-    if 'surgery' in procedure_lower:
-        approved = True
-        coverage_amount = min(claim_amount, 100000)
-        confidence = 0.90
-        justification = f"Surgery procedures are covered. {procedure} approved for {age}-year-old {gender} in {location}."
-    elif 'dental' in procedure_lower:
-        approved = False
-        coverage_amount = 0
-        confidence = 0.70
-        justification = f"Dental procedures require 6-month waiting period verification."
-    elif 'maternity' in procedure_lower:
-        approved = True if age >= 18 and age <= 45 else False
-        coverage_amount = min(claim_amount, 75000) if approved else 0
-        confidence = 0.85
-        justification = f"Maternity benefits {'approved' if approved else 'not approved'} for {age}-year-old."
-    else:
-        approved = True
-        coverage_amount = min(claim_amount, 50000)
-        confidence = 0.60
-        justification = f"General medical claim approved with standard coverage limits."
-    
-    return {
-        "claim_id": claim_id,
-        "status": "processed",
-        "decision": "approved" if approved else "rejected",
-        "approved": approved,
-        "coverage_amount": coverage_amount,
-        "justification": justification,
-        "confidence_score": confidence,
-        "source_documents": ["policy_doc_1", "coverage_terms"],
-        "processing_time_seconds": round(time.time() % 5, 2),
-        "timestamp": datetime.utcnow().isoformat(),
-        "claim_details": {
-            "age": age,
-            "gender": gender,
-            "procedure": procedure,
-            "location": location,
-            "policy_duration": policy_duration,
-            "requested_amount": claim_amount
+    """Webhook insurance claim endpoint (powered by Gemini)"""
+    try:
+        payload = await request.json()
+        
+        claim_id = payload.get('claim_id', f"CLM-{int(time.time())}")
+        procedure = payload.get('procedure', '')
+        
+        # Construct a natural language query from the claim details
+        query_text = f"Evaluate insurance claim {claim_id} for {procedure}. "
+        if 'age' in payload:
+            query_text += f"Patient age: {payload['age']}. "
+        if 'location' in payload:
+            query_text += f"Location: {payload['location']}. "
+        if 'claim_amount' in payload:
+            query_text += f"Amount: {payload['claim_amount']}. "
+            
+        logger.info(f"Processing insurance claim via Gemini: {claim_id}")
+        
+        if not query_service:
+            raise HTTPException(status_code=503, detail="Query service not initialized")
+            
+        # Create request object
+        query_request = QueryRequest(
+            query=query_text,
+            context=payload,
+            query_type=QueryType.INSURANCE_CLAIM
+        )
+        
+        # Process using real service
+        result = await query_service.process_query(query_request)
+        
+        # Map response to match old webhook format
+        is_approved = result.decision.decision.lower() == "approved"
+        
+        return {
+            "claim_id": claim_id,
+            "status": "processed",
+            "decision": result.decision.decision,
+            "approved": is_approved,
+            "coverage_amount": result.decision.amount,
+            "justification": result.decision.justification,
+            "confidence_score": result.decision.confidence_score,
+            "source_documents": result.decision.source_clauses,
+            "processing_time_seconds": result.processing_time,
+            "timestamp": datetime.utcnow().isoformat(),
+            "claim_details": payload
         }
-    }
+    except Exception as e:
+        logger.error(f"Error in insurance claim webhook: {e}")
+        return {
+            "status": "error",
+            "message": str(e),
+            "claim_id": payload.get('claim_id')
+        }
 
 
 @app.post("/webhook/document-upload")
 async def webhook_document_upload(request: Request):
-    """Webhook document upload endpoint (backward compatible)"""
-    payload = await request.json()
-    
-    file_path = payload.get('file_path', '')
-    callback_url = payload.get('callback_url', '')
-    metadata = payload.get('metadata', {})
-    
-    logger.info(f"Processing document upload: {file_path}")
-    
-    return {
-        "status": "received",
-        "message": "Document upload webhook processed successfully",
-        "document_id": f"doc_{int(time.time())}",
-        "file_path": file_path,
-        "callback_url": callback_url,
-        "metadata": metadata,
-        "timestamp": datetime.utcnow().isoformat(),
-        "note": "Document processing started in background"
-    }
+    """Webhook document upload endpoint (powered by DocumentService)"""
+    # Note: This endpoint expects a file path in JSON, which assumes the file 
+    # is already on the server. Real file upload should use /api/upload
+    try:
+        payload = await request.json()
+        file_path = payload.get('file_path', '')
+        
+        logger.info(f"Processing document upload request: {file_path}")
+        
+        if not document_service:
+            raise HTTPException(status_code=503, detail="Document service not initialized")
+            
+        if os.path.exists(file_path):
+            document_id = await document_service.process_document(file_path)
+            status = "processed"
+            message = "Document processed successfully"
+        else:
+            document_id = None
+            status = "error"
+            message = "File not found at specified path"
+            
+        return {
+            "status": status,
+            "message": message,
+            "document_id": document_id,
+            "file_path": file_path,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error in document upload webhook: {e}")
+        return {
+            "status": "error",
+            "message": str(e)
+        }
 
 
 @app.get("/")
@@ -216,13 +273,13 @@ async def root():
         "message": "LLM DocWrangler API",
         "version": "1.0.0",
         "docs": "/docs",
-        "health": "/health"
+        "health": "/health",
+        "auth_required": bool(os.getenv("APP_API_KEY"))
     }
 
 
 if __name__ == "__main__":
     import uvicorn
-    import os
     
     port = int(os.getenv("PORT", 8001))
     uvicorn.run(app, host="0.0.0.0", port=port)
