@@ -1,8 +1,8 @@
 from typing import List
 from core.models import QueryRequest, ProcessingResponse, RetrievalResult
-from query_engine.parser import QueryParser
-from retrieval.vector_store import VectorStore
-from decision_engine.evaluator import DecisionEvaluator
+from src.query_engine.parser import QueryParser
+from src.retrieval.vector_store import VectorStore
+from src.decision_engine.evaluator import DecisionEvaluator
 
 class QueryService:
     """Service for processing natural language queries"""

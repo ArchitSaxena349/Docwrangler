@@ -3,7 +3,7 @@ Health check endpoints with dependency checks
 """
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import Dict, Optional
+from typing import Dict, Optional, Any
 from datetime import datetime
 import os
 
@@ -27,7 +27,7 @@ class DetailedHealthStatus(BaseModel):
     status: str
     timestamp: str
     version: str
-    checks: Dict[str, Dict[str, any]]
+    checks: Dict[str, Dict[str, Any]]
 
 
 @router.get("/health", response_model=HealthStatus)

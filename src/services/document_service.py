@@ -3,8 +3,8 @@ import uuid
 from pathlib import Path
 from typing import List
 
-from document_processor.processor_factory import ProcessorFactory
-from retrieval.vector_store import VectorStore
+from src.document_processor.processor_factory import ProcessorFactory
+from src.retrieval.vector_store import VectorStore
 from core.config import Config
 
 class DocumentService:

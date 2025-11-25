@@ -5,8 +5,8 @@ import time
 from pathlib import Path
 
 from core.models import QueryRequest, ProcessingResponse
-from services.document_service import DocumentService
-from services.query_service import QueryService
+from src.services.document_service import DocumentService
+from src.services.query_service import QueryService
 from core.config import Config
 
 router = APIRouter()

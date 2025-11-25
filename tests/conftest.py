@@ -4,10 +4,17 @@ Pytest configuration and fixtures
 import pytest
 from fastapi.testclient import TestClient
 import os
+import sys
+from unittest.mock import MagicMock
 
 # Set test environment variables
 os.environ["GEMINI_API_KEY"] = "test_key"
-os.environ["LOG_LEVEL"] = "ERROR"  # Reduce noise in tests
+os.environ["LOG_LEVEL"] = "ERROR"
+
+# Mock heavy dependencies that might be missing
+sys.modules["chromadb"] = MagicMock()
+sys.modules["chromadb.config"] = MagicMock()
+sys.modules["sentence_transformers"] = MagicMock()
 
 from main import app
 

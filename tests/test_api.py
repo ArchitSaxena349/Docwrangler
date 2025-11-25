@@ -100,5 +100,8 @@ def test_request_id_header(client):
 
 def test_cors_headers(client):
     """Test CORS headers are present"""
-    response = client.options("/health")
+    headers = {"Origin": "http://localhost"}
+    response = client.get("/health", headers=headers)
     assert response.status_code == 200
+    assert "access-control-allow-origin" in response.headers
+    assert response.headers["access-control-allow-origin"] == "*"
