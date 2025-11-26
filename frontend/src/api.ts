@@ -3,7 +3,7 @@ export const API_KEY_KEY = 'docwrangler_api_key';
 
 export const getApiConfig = () => {
     return {
-        baseUrl: localStorage.getItem(API_BASE_URL_KEY) || 'http://localhost:8000',
+        baseUrl: localStorage.getItem(API_BASE_URL_KEY) || '',
         apiKey: localStorage.getItem(API_KEY_KEY) || '',
     };
 };

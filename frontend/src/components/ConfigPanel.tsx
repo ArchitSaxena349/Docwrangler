@@ -42,7 +42,7 @@ export const ConfigPanel: React.FC = () => {
                                 value={baseUrl}
                                 onChange={(e) => setBaseUrl(e.target.value)}
                                 className="input"
-                                placeholder="http://localhost:8000"
+                                placeholder="https://api.example.com (Leave empty for default)"
                             />
                         </div>
 
