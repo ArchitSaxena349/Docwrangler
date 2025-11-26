@@ -1,21 +1,15 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Send, User, Bot, Loader2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-import { sendQuery, type ChatResponse } from '../api';
+import { sendQuery } from '../api';
 
-interface Message {
-    role: 'user' | 'bot';
-    content: string;
-    metadata?: any;
-}
-
-export const ChatWindow: React.FC = () => {
-    const [messages, setMessages] = useState<Message[]>([
+export const ChatWindow = () => {
+    const [messages, setMessages] = useState([
         { role: 'bot', content: 'Hello! I can help you answer questions about your insurance documents. Upload a policy or claim document to get started.' }
     ]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const messagesEndRef = useRef<HTMLDivElement>(null);
+    const messagesEndRef = useRef(null);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -25,7 +19,7 @@ export const ChatWindow: React.FC = () => {
         scrollToBottom();
     }, [messages]);
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         if (!input.trim() || isLoading) return;
 
@@ -35,7 +29,7 @@ export const ChatWindow: React.FC = () => {
         setIsLoading(true);
 
         try {
-            const response: ChatResponse = await sendQuery(userMessage);
+            const response = await sendQuery(userMessage);
 
             // Format the response
             let botContent = `**Decision:** ${response.decision.toUpperCase()}\n\n`;
@@ -43,36 +37,7 @@ export const ChatWindow: React.FC = () => {
                 botContent += `*Confidence: ${(response.confidence * 100).toFixed(1)}%*\n\n`;
             }
 
-            // Add justification if available (it might be in decision logic, 
-            // but the API response structure depends on the backend).
-            // Based on main.py, ProcessingResponse has 'decision' which is a dict or string?
-            // Let's check main.py again.
-            // ProcessingResponse model:
-            // class ProcessingResponse(BaseModel):
-            //     query: str
-            //     parsed_query: ParsedQuery
-            //     retrieved_documents: List[RetrievalResult]
-            //     decision: DecisionResult
-            //     processing_time: float
-
-            // And DecisionResult:
-            // class DecisionResult(BaseModel):
-            //     decision: str
-            //     amount: Optional[float] = None
-            //     justification: str
-            //     source_clauses: List[str]
-            //     confidence_score: float
-            //     metadata: Dict[str, Any]
-
-            // So response.decision is actually an object in the Typescript interface?
-            // In api.ts I defined decision as string. I should update that or handle it.
-            // Wait, if the backend returns a Pydantic model, it serializes to JSON.
-            // So response.decision will be an object.
-
-            // I'll assume response.decision is an object based on the backend model.
-            // But let's handle it safely.
-
-            const decisionData = response.decision as any;
+            const decisionData = response.decision;
 
             if (typeof decisionData === 'object') {
                 botContent = `**Decision:** ${decisionData.decision?.toUpperCase() || 'UNKNOWN'}\n\n`;
@@ -82,7 +47,7 @@ export const ChatWindow: React.FC = () => {
                 botContent += `${decisionData.justification}\n\n`;
 
                 if (decisionData.source_clauses && decisionData.source_clauses.length > 0) {
-                    botContent += `**Sources:**\n${decisionData.source_clauses.map((c: string) => `- ${c}`).join('\n')}`;
+                    botContent += `**Sources:**\n${decisionData.source_clauses.map((c) => `- ${c}`).join('\n')}`;
                 }
             } else {
                 // Fallback if it's just a string
@@ -90,7 +55,7 @@ export const ChatWindow: React.FC = () => {
             }
 
             setMessages(prev => [...prev, { role: 'bot', content: botContent }]);
-        } catch (error: any) {
+        } catch (error) {
             setMessages(prev => [...prev, { role: 'bot', content: `Error: ${error.message || 'Something went wrong.'}` }]);
         } finally {
             setIsLoading(false);

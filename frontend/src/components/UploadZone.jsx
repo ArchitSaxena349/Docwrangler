@@ -1,15 +1,15 @@
-import React, { useState, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { Upload, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { uploadDocument } from '../api';
 
-export const UploadZone: React.FC = () => {
+export const UploadZone = () => {
     const [isDragging, setIsDragging] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
-    const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
+    const [status, setStatus] = useState('idle');
     const [message, setMessage] = useState('');
-    const fileInputRef = useRef<HTMLInputElement>(null);
+    const fileInputRef = useRef(null);
 
-    const handleDragOver = (e: React.DragEvent) => {
+    const handleDragOver = (e) => {
         e.preventDefault();
         setIsDragging(true);
     };
@@ -18,7 +18,7 @@ export const UploadZone: React.FC = () => {
         setIsDragging(false);
     };
 
-    const handleDrop = async (e: React.DragEvent) => {
+    const handleDrop = async (e) => {
         e.preventDefault();
         setIsDragging(false);
 
@@ -27,13 +27,13 @@ export const UploadZone: React.FC = () => {
         }
     };
 
-    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileSelect = async (e) => {
         if (e.target.files && e.target.files[0]) {
             await processUpload(e.target.files[0]);
         }
     };
 
-    const processUpload = async (file: File) => {
+    const processUpload = async (file) => {
         setIsUploading(true);
         setStatus('idle');
         setMessage('');
@@ -43,7 +43,7 @@ export const UploadZone: React.FC = () => {
             setStatus('success');
             setMessage(`Uploaded: ${file.name}`);
             console.log('Upload result:', result);
-        } catch (error: any) {
+        } catch (error) {
             setStatus('error');
             setMessage(error.message || 'Upload failed');
         } finally {

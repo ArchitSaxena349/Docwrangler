@@ -271,27 +271,11 @@ async def api_health_check():
     """API Health check endpoint"""
     return {"status": "healthy", "service": "LLM Document Processing System"}
 
-# Mount frontend static files
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
-
-# Mount static files (JS, CSS, images)
-if os.path.exists("frontend/dist"):
-    app.mount("/assets", StaticFiles(directory="frontend/dist/assets"), name="assets")
-
-@app.get("/{full_path:path}")
-async def serve_frontend(full_path: str):
-    """Serve the frontend application"""
-    # If API route, let it pass through (handled by other routers)
-    if full_path.startswith("api") or full_path.startswith("webhook") or full_path.startswith("docs") or full_path.startswith("openapi.json"):
-        raise HTTPException(status_code=404, detail="Not Found")
-    
-    # Serve index.html for all other routes (SPA)
-    if os.path.exists("frontend/dist/index.html"):
-        return FileResponse("frontend/dist/index.html")
-    
+@app.get("/")
+async def root():
+    """Root endpoint"""
     return {
-        "message": "LLM DocWrangler API (Frontend not built)",
+        "message": "LLM DocWrangler API",
         "version": "1.0.0",
         "docs": "/docs",
         "health": "/api/health"
