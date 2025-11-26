@@ -5,15 +5,10 @@ import time
 from pathlib import Path
 
 from core.models import QueryRequest, ProcessingResponse
-from src.services.document_service import DocumentService
-from src.services.query_service import QueryService
+from src.api.dependencies import get_document_service, get_query_service
 from core.config import Config
 
 router = APIRouter()
-
-# Initialize services
-document_service = DocumentService()
-query_service = QueryService()
 
 @router.post("/upload", response_model=dict)
 async def upload_document(file: UploadFile = File(...)):
@@ -21,7 +16,7 @@ async def upload_document(file: UploadFile = File(...)):
     try:
         # Validate file type
         file_extension = Path(file.filename).suffix.lower()
-        if file_extension not in ['.pdf', '.docx', '.doc', '.eml', '.msg']:
+        if file_extension not in ['.pdf', '.docx', '.doc', '.eml', '.msg', '.txt']:
             raise HTTPException(status_code=400, detail="Unsupported file type")
         
         # Save uploaded file
@@ -36,7 +31,8 @@ async def upload_document(file: UploadFile = File(...)):
             buffer.write(content)
         
         # Process document
-        document_id = await document_service.process_document(str(file_path))
+        service = get_document_service()
+        document_id = await service.process_document(str(file_path))
         
         return {
             "message": "Document uploaded and processed successfully",
@@ -54,7 +50,8 @@ async def process_query(request: QueryRequest):
         start_time = time.time()
         
         # Process the query
-        result = await query_service.process_query(request)
+        service = get_query_service()
+        result = await service.process_query(request)
         
         processing_time = time.time() - start_time
         result.processing_time = processing_time
@@ -68,7 +65,8 @@ async def process_query(request: QueryRequest):
 async def list_documents():
     """List all processed documents"""
     try:
-        return document_service.list_documents()
+        service = get_document_service()
+        return service.list_documents()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -76,7 +74,8 @@ async def list_documents():
 async def delete_document(document_id: str):
     """Delete a document from the system"""
     try:
-        await document_service.delete_document(document_id)
+        service = get_document_service()
+        await service.delete_document(document_id)
         return {"message": f"Document {document_id} deleted successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -91,7 +90,7 @@ async def get_stats():
     """Get system statistics"""
     try:
         stats = {
-            "total_documents": document_service.get_document_count(),
+            "total_documents": get_document_service().get_document_count(),
             "upload_directory": Config.UPLOAD_DIRECTORY,
             "vector_store_path": Config.CHROMA_PERSIST_DIRECTORY
         }

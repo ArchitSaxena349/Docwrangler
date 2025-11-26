@@ -1,0 +1,11 @@
+This is a test insurance policy document.
+Policy Number: TEST-12345
+Policy Holder: John Doe
+Coverage Limit: $50,000
+Deductible: $500
+Effective Date: 2024-01-01
+
+Clauses:
+1. Accidental Damage is covered up to the full limit.
+2. Water damage is excluded unless caused by a burst pipe.
+3. Theft is covered with a police report.

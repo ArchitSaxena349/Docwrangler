@@ -17,18 +17,11 @@ from src.api.exceptions import setup_exception_handlers
 from src.utils.logger import get_logger, setup_logging
 from core.config import Config
 from core.models import QueryRequest, QueryType
-
-# Import services
-from src.services.query_service import QueryService
-from src.services.document_service import DocumentService
+from src.api.dependencies import get_query_service, get_document_service, init_services
 
 # Setup logging
 setup_logging()
 logger = get_logger(__name__)
-
-# Initialize services
-query_service = None
-document_service = None
 
 # API Key Security
 API_KEY_NAME = "x-api-key"
@@ -59,10 +52,8 @@ async def lifespan(app: FastAPI):
     logger.info(f"Vector Store: {Config.CHROMA_PERSIST_DIRECTORY}")
     
     # Initialize services
-    global query_service, document_service
     try:
-        query_service = QueryService()
-        document_service = DocumentService()
+        init_services()
         logger.info("Services initialized successfully")
     except Exception as e:
         logger.error(f"Error initializing services: {e}")
@@ -135,6 +126,7 @@ async def webhook_query(request: Request):
         
         logger.info(f"Processing webhook query: {query_text}")
         
+        query_service = get_query_service()
         if not query_service:
             raise HTTPException(status_code=503, detail="Query service not initialized")
             
@@ -190,6 +182,7 @@ async def webhook_insurance_claim(request: Request):
             
         logger.info(f"Processing insurance claim via Gemini: {claim_id}")
         
+        query_service = get_query_service()
         if not query_service:
             raise HTTPException(status_code=503, detail="Query service not initialized")
             
@@ -239,6 +232,7 @@ async def webhook_document_upload(request: Request):
         
         logger.info(f"Processing document upload request: {file_path}")
         
+        document_service = get_document_service()
         if not document_service:
             raise HTTPException(status_code=503, detail="Document service not initialized")
             

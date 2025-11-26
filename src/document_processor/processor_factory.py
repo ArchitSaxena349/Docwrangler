@@ -3,6 +3,7 @@ from .base import BaseDocumentProcessor
 from .pdf_processor import PDFProcessor
 from .docx_processor import DocxProcessor
 from .email_processor import EmailProcessor
+from .text_processor import TextProcessor
 from core.models import DocumentType
 
 class ProcessorFactory:
@@ -12,6 +13,7 @@ class ProcessorFactory:
         DocumentType.PDF: PDFProcessor,
         DocumentType.DOCX: DocxProcessor,
         DocumentType.EMAIL: EmailProcessor,
+        DocumentType.TEXT: TextProcessor,
     }
     
     @classmethod
@@ -32,6 +34,7 @@ class ProcessorFactory:
             '.doc': DocumentType.DOCX,
             '.eml': DocumentType.EMAIL,
             '.msg': DocumentType.EMAIL,
+            '.txt': DocumentType.TEXT,
         }
         
         document_type = extension_mapping.get(file_extension.lower())
