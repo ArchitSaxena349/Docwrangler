@@ -45,6 +45,14 @@ Use this for deployment (e.g., Render) to enable Vector Store features.
    uvicorn main:app --host 0.0.0.0 --port $PORT
    ```
 
+3. **Run Frontend:**
+   ```bash
+   cd frontend
+   npm install
+   npm run dev
+   ```
+   Access the UI at `http://localhost:5173`.
+
 ## ☁️ Deployment (Render)
 
 - **Build Command:** `pip install -r requirements.txt`
