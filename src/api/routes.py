@@ -16,7 +16,7 @@ async def upload_document(file: UploadFile = File(...)):
     try:
         # Validate file type
         file_extension = Path(file.filename).suffix.lower()
-        if file_extension not in ['.pdf', '.docx', '.doc', '.eml', '.msg', '.txt']:
+        if file_extension not in ['.pdf', '.docx', '.doc', '.eml', '.msg', '.txt', '.jpg', '.jpeg', '.png']:
             raise HTTPException(status_code=400, detail="Unsupported file type")
         
         # Save uploaded file
@@ -29,6 +29,7 @@ async def upload_document(file: UploadFile = File(...)):
             if len(content) > Config.MAX_FILE_SIZE:
                 raise HTTPException(status_code=400, detail="File too large")
             buffer.write(content)
+            print(f"DEBUG: Uploaded file {file.filename} size: {len(content)} bytes")
         
         # Process document
         service = get_document_service()

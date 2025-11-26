@@ -4,6 +4,7 @@ from .pdf_processor import PDFProcessor
 from .docx_processor import DocxProcessor
 from .email_processor import EmailProcessor
 from .text_processor import TextProcessor
+from .image_processor import ImageProcessor
 from core.models import DocumentType
 
 class ProcessorFactory:
@@ -14,6 +15,7 @@ class ProcessorFactory:
         DocumentType.DOCX: DocxProcessor,
         DocumentType.EMAIL: EmailProcessor,
         DocumentType.TEXT: TextProcessor,
+        DocumentType.IMAGE: ImageProcessor,
     }
     
     @classmethod
@@ -35,7 +37,11 @@ class ProcessorFactory:
             '.eml': DocumentType.EMAIL,
             '.msg': DocumentType.EMAIL,
             '.txt': DocumentType.TEXT,
+            '.jpg': DocumentType.IMAGE,
+            '.jpeg': DocumentType.IMAGE,
+            '.png': DocumentType.IMAGE,
         }
+
         
         document_type = extension_mapping.get(file_extension.lower())
         if not document_type:

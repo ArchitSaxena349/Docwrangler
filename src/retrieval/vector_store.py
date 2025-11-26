@@ -31,6 +31,8 @@ class VectorStore:
             except ImportError as e:
                 logger.warning(f"Heavy dependencies not found: {e}. Running in lightweight mode.")
                 HEAVY_DEPS_AVAILABLE = False
+            
+            logger.info(f"VectorStore initialized. HEAVY_DEPS_AVAILABLE: {HEAVY_DEPS_AVAILABLE}")
             self._heavy_deps_checked = True
 
         if not HEAVY_DEPS_AVAILABLE:
@@ -76,12 +78,17 @@ class VectorStore:
             metadatas.append(metadata)
         
         # Add to collection
-        self.collection.add(
-            ids=ids,
-            embeddings=embeddings,
-            documents=texts,
-            metadatas=metadatas
-        )
+        try:
+            self.collection.add(
+                ids=ids,
+                embeddings=embeddings,
+                documents=texts,
+                metadatas=metadatas
+            )
+            logger.info(f"Successfully added {len(ids)} chunks to ChromaDB. Collection count: {self.collection.count()}")
+        except Exception as e:
+            logger.error(f"Failed to add documents to ChromaDB: {e}")
+            raise
     
     def search(self, query: str, top_k: int = None, 
                document_ids: Optional[List[str]] = None) -> List[RetrievalResult]:
@@ -111,6 +118,8 @@ class VectorStore:
             include=['documents', 'metadatas', 'distances']
         )
         
+        logger.info(f"Search Results: {results}")
+
         # Convert to RetrievalResult objects
         retrieval_results = []
         if results['ids'] and len(results['ids']) > 0:

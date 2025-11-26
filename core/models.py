@@ -13,6 +13,7 @@ class DocumentType(str, Enum):
     DOCX = "docx"
     EMAIL = "email"
     TEXT = "text"
+    IMAGE = "image"
 
 class QueryRequest(BaseModel):
     query: str = Field(..., description="Natural language query")
@@ -43,6 +44,7 @@ class RetrievalResult(BaseModel):
 
 class DecisionResult(BaseModel):
     decision: str = Field(..., description="Final decision (approved/rejected/pending)")
+    payment_mode: str = Field(..., description="Payment mode (Cashless/Reimbursement/Unknown)")
     amount: Optional[float] = Field(None, description="Amount if applicable")
     justification: str = Field(..., description="Explanation of the decision")
     source_clauses: List[str] = Field(..., description="Referenced document clauses")

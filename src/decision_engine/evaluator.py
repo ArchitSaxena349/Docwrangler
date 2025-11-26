@@ -18,6 +18,7 @@ class DecisionEvaluator:
         if not retrieved_docs:
             return DecisionResult(
                 decision="insufficient_information",
+                payment_mode="unknown",
                 justification="No relevant documents found to make a decision",
                 source_clauses=[],
                 confidence_score=0.0
@@ -45,6 +46,7 @@ class DecisionEvaluator:
             
             return DecisionResult(
                 decision=decision_data.get("decision", "pending"),
+                payment_mode=decision_data.get("payment_mode", "unknown"),
                 amount=decision_data.get("amount"),
                 justification=decision_data.get("justification", ""),
                 source_clauses=decision_data.get("source_clauses", []),
@@ -55,6 +57,7 @@ class DecisionEvaluator:
         except Exception as e:
             return DecisionResult(
                 decision="error",
+                payment_mode="unknown",
                 justification=f"Error in decision evaluation: {str(e)}",
                 source_clauses=[],
                 confidence_score=0.0
@@ -77,9 +80,6 @@ class DecisionEvaluator:
         QUERY ANALYSIS:
         Original Query: {parsed_query.original_query}
         Structured Data: {json.dumps(parsed_query.structured_data, indent=2)}
-        Query Type: {parsed_query.query_type}
-        Intent: {parsed_query.intent}
-        Key Entities: {parsed_query.key_entities}
         
         {context}
         
@@ -87,8 +87,9 @@ class DecisionEvaluator:
         
         {{
             "decision": "approved|rejected|pending|insufficient_information",
-            "amount": null or numeric value if applicable,
-            "justification": "Clear explanation of the decision with specific references to document sections",
+            "payment_mode": "cashless|reimbursement|unknown",
+            "amount": null or numeric value if applicable (calculate based on coverage limits, deductibles, and co-pay),
+            "justification": "Clear explanation of the decision. Explicitly state why it is Cashless or Reimbursement (e.g., 'Hospital is in-network'). Detail the amount calculation.",
             "source_clauses": ["list", "of", "specific", "clause", "identifiers", "or", "section", "references"],
             "confidence_score": 0.0 to 1.0,
             "metadata": {{
@@ -99,11 +100,13 @@ class DecisionEvaluator:
         }}
         
         Guidelines:
-        1. Base your decision strictly on the provided document sections
-        2. Reference specific clauses or sections in your justification
-        3. If information is insufficient, state what additional information is needed
-        4. Provide a confidence score based on how well the documents address the query
-        5. Include reasoning steps in metadata for transparency
+        1. Base your decision strictly on the provided document sections.
+        2. **Payment Mode**: Check if the hospital/provider is mentioned in the query. If it matches a "Network Hospital" list in the documents, set to "cashless". Otherwise, "reimbursement".
+        3. **Amount Calculation**: Apply deductibles and co-pays to the claimed amount.
+        4. Reference specific clauses or sections in your justification.
+        5. If information is insufficient, state what additional information is needed.
+        6. Provide a confidence score based on how well the documents address the query.
+        7. Include reasoning steps in metadata for transparency.
         """
     
     def _get_system_prompt(self) -> str:

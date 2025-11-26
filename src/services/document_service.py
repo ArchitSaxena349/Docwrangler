@@ -26,6 +26,8 @@ class DocumentService:
             # Extract text and metadata
             text = processor.extract_text(file_path)
             metadata = processor.extract_metadata(file_path)
+            print(f"DEBUG: Extracted text length: {len(text)} chars")
+            print(f"DEBUG: Extracted text preview: {text[:100]}")
             
             # Add document ID to metadata
             metadata['document_id'] = document_id
