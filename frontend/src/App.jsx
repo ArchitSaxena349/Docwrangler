@@ -18,7 +18,7 @@ function App() {
                     </h1>
                 </div>
                 <p className="text-slate-400 text-lg max-w-xl mx-auto leading-relaxed font-light">
-                    Intelligent insurance document processing powered by <span className="text-indigo-300 font-medium">Gemini 1.5 Pro</span>
+                    Intelligent insurance document processing
                 </p>
             </header>
 
