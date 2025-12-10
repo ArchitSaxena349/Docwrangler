@@ -1,0 +1,8 @@
+This is a sample insurance policy document for verification.
+Policy Number: 123456789
+Coverage: Comprehensive Health Insurance
+Network Hospital: "City General Hospital" is a network provider.
+Exclusions: Cosmetic surgery is excluded.
+Waiting Period: 30 days for initial illness.
+Deductible: $500.
+Co-pay: 10%.

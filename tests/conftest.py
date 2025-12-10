@@ -23,10 +23,13 @@ from core.models import DecisionResult, ParsedQuery, QueryType, ProcessingRespon
 @pytest.fixture(autouse=True)
 def mock_services():
     """Mock the services to avoid real logic/dependencies"""
-    # Patch the class where it is USED in main.py
-    with unittest.mock.patch("main.QueryService") as MockQueryService:
-        # Setup the mock instance
-        mock_service = MockQueryService.return_value
+    # Patch the dependency functions in main.py
+    with unittest.mock.patch("main.get_query_service") as MockGetQueryService, \
+         unittest.mock.patch("main.get_document_service") as MockGetDocumentService:
+        
+        # Setup the mock service instance
+        mock_service = MagicMock()
+        MockGetQueryService.return_value = mock_service
         
         async def process_query(request):
             query_text = request.query.lower()
@@ -61,6 +64,7 @@ def mock_services():
                 retrieved_documents=[],
                 decision=DecisionResult(
                     decision=decision,
+                    payment_mode="Cashless",
                     amount=amount,
                     justification=justification,
                     source_clauses=["test_clause"],
@@ -72,14 +76,13 @@ def mock_services():
             
         mock_service.process_query.side_effect = process_query
         
-        # Manually inject into main module to ensure it's set
-        import main
-        main.query_service = mock_service
-        main.document_service = MagicMock()
+        # Setup document service mock
+        mock_doc_service = MagicMock()
+        MockGetDocumentService.return_value = mock_doc_service
         
         async def mock_process_doc(path):
             return "doc_123"
-        main.document_service.process_document.side_effect = mock_process_doc
+        mock_doc_service.process_document.side_effect = mock_process_doc
         
         yield
 

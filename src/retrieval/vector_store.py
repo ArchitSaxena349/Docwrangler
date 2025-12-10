@@ -25,14 +25,22 @@ class VectorStore:
             try:
                 global chromadb, Settings, SentenceTransformer
                 import chromadb
+                print("DEBUG: chromadb imported")
                 from chromadb.config import Settings
                 from sentence_transformers import SentenceTransformer
+                print("DEBUG: sentence_transformers imported")
                 HEAVY_DEPS_AVAILABLE = True
             except ImportError as e:
                 logger.warning(f"Heavy dependencies not found: {e}. Running in lightweight mode.")
+                print(f"DEBUG: Heavy dependencies not found: {e}")
                 HEAVY_DEPS_AVAILABLE = False
-            
+            except Exception as e:
+                print(f"DEBUG: Other error during init: {e}")
+                logger.error(f"Error during init: {e}")
+                HEAVY_DEPS_AVAILABLE = False
+
             logger.info(f"VectorStore initialized. HEAVY_DEPS_AVAILABLE: {HEAVY_DEPS_AVAILABLE}")
+            print(f"DEBUG: VectorStore initialized. HEAVY_DEPS_AVAILABLE: {HEAVY_DEPS_AVAILABLE}")
             self._heavy_deps_checked = True
 
         if not HEAVY_DEPS_AVAILABLE:

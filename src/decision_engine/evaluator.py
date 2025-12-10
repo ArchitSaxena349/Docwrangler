@@ -1,5 +1,5 @@
 from typing import List, Dict, Any
-import google.generativeai as genai
+from groq import Groq
 from core.models import ParsedQuery, RetrievalResult, DecisionResult
 from core.config import Config
 import json
@@ -8,8 +8,8 @@ class DecisionEvaluator:
     """Evaluate queries against retrieved documents to make decisions"""
     
     def __init__(self):
-        genai.configure(api_key=Config.GEMINI_API_KEY)
-        self.model = genai.GenerativeModel(Config.GEMINI_MODEL)
+        self.client = Groq(api_key=Config.GROQ_API_KEY)
+        self.model = Config.GROQ_MODEL
     
     def evaluate(self, parsed_query: ParsedQuery, 
                 retrieved_docs: List[RetrievalResult]) -> DecisionResult:
@@ -31,18 +31,19 @@ class DecisionEvaluator:
         decision_prompt = self._create_decision_prompt(parsed_query, context)
         
         try:
-            # Combine system prompt and user prompt for Gemini
-            full_prompt = f"{self._get_system_prompt()}\n\n{decision_prompt}"
-            response = self.model.generate_content(full_prompt)
+            # Call Groq API
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": self._get_system_prompt()},
+                    {"role": "user", "content": decision_prompt}
+                ],
+                response_format={"type": "json_object"}
+            )
             
-            # Parse response - extract JSON
-            text = response.text
-            json_start = text.find('{')
-            json_end = text.rfind('}') + 1
-            if json_start != -1 and json_end > json_start:
-                decision_data = json.loads(text[json_start:json_end])
-            else:
-                decision_data = {}
+            # Parse response
+            text = response.choices[0].message.content
+            decision_data = json.loads(text)
             
             return DecisionResult(
                 decision=decision_data.get("decision", "pending"),
@@ -100,13 +101,20 @@ class DecisionEvaluator:
         }}
         
         Guidelines:
-        1. Base your decision strictly on the provided document sections.
-        2. **Payment Mode**: Check if the hospital/provider is mentioned in the query. If it matches a "Network Hospital" list in the documents, set to "cashless". Otherwise, "reimbursement".
-        3. **Amount Calculation**: Apply deductibles and co-pays to the claimed amount.
-        4. Reference specific clauses or sections in your justification.
-        5. If information is insufficient, state what additional information is needed.
-        6. Provide a confidence score based on how well the documents address the query.
-        7. Include reasoning steps in metadata for transparency.
+        1. **Step-by-Step Analysis**:
+           a. Identify the specific medical procedure or query intent.
+           b. Scan retrieved sections for keywords (inclusions, exclusions, waiting periods).
+           c. Check if the provider/location affects coverage (Network vs Non-network).
+           d. Calculate payable amount only if coverage is confirmed.
+        
+        2. **Decision Logic**:
+           - **Approved**: Explicit positive evidence found.
+           - **Rejected**: Explicit exclusion found OR criteria not met.
+           - **Insufficient Information**: Key details missing (e.g., policy type, waiting period status) and no default rule applies.
+           
+        3. **Payment Mode**: "cashless" ONLY if the hospital is explicitly listed as Network/PPN. Default to "reimbursement" if unsure or non-network.
+        
+        4. **Jusitification**: Must cite the exact section/clause used.
         """
     
     def _get_system_prompt(self) -> str:
@@ -127,6 +135,10 @@ class DecisionEvaluator:
         - Explain your reasoning clearly
         - Acknowledge limitations and uncertainties
         - Provide actionable insights
+        - **Chain of Thought**: Before deciding, think through the coverage criteria step-by-step.
+        - **Evidence-Based**: Every decision must be backed by a specific clause.
+        - **Precision**: If the document doesn't explicitly cover the specific procedure/condition, state "insufficient_information" or "rejected" (if excluded), do not guess.
+        - **Exclusions**: Check specifically for exclusions related to the query.
         
         Always respond with valid JSON in the specified format.
         """

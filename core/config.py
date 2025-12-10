@@ -13,8 +13,13 @@ class Config:
 
     # Gemini / LLM
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-    GEMINI_MODEL = os.getenv("GEMINI_MODEL", "models/gemini-flash-latest")
+
+    GEMINI_MODEL = os.getenv("GEMINI_MODEL", "models/gemini-1.5-pro")
     EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
+
+    # Groq / LLM
+    GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+    GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile") # Updated to replace decommissioned llama3-70b-8192
 
     # Vector DB
     CHROMA_PERSIST_DIRECTORY = os.getenv(
@@ -27,7 +32,7 @@ class Config:
     CHUNK_SIZE = int(os.getenv("CHUNK_SIZE", "1000"))
     CHUNK_OVERLAP = int(os.getenv("CHUNK_OVERLAP", "200"))
     TOP_K_RESULTS = int(os.getenv("TOP_K_RESULTS", "5"))
-    SIMILARITY_THRESHOLD = float(os.getenv("SIMILARITY_THRESHOLD", "0.3"))
+    SIMILARITY_THRESHOLD = 0.1 # Lowered from 0.3 to ensure retrieval of policy documents
 
     # API
     API_HOST = os.getenv("API_HOST", "0.0.0.0")
