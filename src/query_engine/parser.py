@@ -1,6 +1,6 @@
 import re
 from typing import Dict, Any, List
-import google.generativeai as genai
+from google import genai
 from core.models import ParsedQuery, QueryType
 from core.config import Config
 
@@ -8,8 +8,8 @@ class QueryParser:
     """Parse natural language queries into structured data"""
     
     def __init__(self):
-        genai.configure(api_key=Config.GEMINI_API_KEY)
-        self.model = genai.GenerativeModel(Config.GEMINI_MODEL)
+        self.client = genai.Client(api_key=Config.GEMINI_API_KEY)
+        self.model_name = Config.GEMINI_MODEL
     
     def parse_query(self, query: str) -> ParsedQuery:
         """Parse natural language query into structured format"""
@@ -87,7 +87,10 @@ class QueryParser:
         """
         
         try:
-            response = self.model.generate_content(prompt)
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=prompt
+            )
             
             import json
             # Extract JSON from response

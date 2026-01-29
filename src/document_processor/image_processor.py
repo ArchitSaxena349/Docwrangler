@@ -1,6 +1,6 @@
 from typing import Dict, Any
 from .base import BaseDocumentProcessor
-import google.generativeai as genai
+from google import genai
 from core.config import Config
 import PIL.Image
 
@@ -8,8 +8,8 @@ class ImageProcessor(BaseDocumentProcessor):
     """Processor for image files (JPG, PNG) using Gemini Vision"""
     
     def __init__(self):
-        genai.configure(api_key=Config.GEMINI_API_KEY)
-        self.model = genai.GenerativeModel('gemini-1.5-flash')
+        self.client = genai.Client(api_key=Config.GEMINI_API_KEY)
+        self.model = 'gemini-1.5-flash'
     
     def extract_text(self, file_path: str) -> str:
         """Extract text from image using Gemini Vision"""
@@ -23,7 +23,10 @@ class ImageProcessor(BaseDocumentProcessor):
             If the image is blurry or unreadable, state that clearly.
             """
             
-            response = self.model.generate_content([prompt, img])
+            response = self.client.models.generate_content(
+                model=self.model,
+                contents=[prompt, img]
+            )
             return response.text
         except Exception as e:
             raise Exception(f"Error processing image: {str(e)}")
