@@ -1,4 +1,3 @@
-from functools import lru_cache
 from src.services.document_service import DocumentService
 from src.services.query_service import QueryService
 

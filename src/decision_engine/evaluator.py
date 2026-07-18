@@ -1,7 +1,8 @@
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from groq import Groq
-from core.models import ParsedQuery, RetrievalResult, DecisionResult
-from core.config import Config
+from src.core.models import ParsedQuery, RetrievalResult, DecisionResult
+from src.core.config import Config
+from src.decision_engine.rules import RulesEngine
 import json
 
 class DecisionEvaluator:
@@ -12,16 +13,24 @@ class DecisionEvaluator:
         self.model = Config.GROQ_MODEL
     
     def evaluate(self, parsed_query: ParsedQuery, 
-                retrieved_docs: List[RetrievalResult]) -> DecisionResult:
+                 retrieved_docs: List[RetrievalResult],
+                 context: Optional[Dict[str, Any]] = None) -> DecisionResult:
         """Evaluate query against retrieved documents"""
+        
+        # Run deterministic rules pre-screening first
+        rule_decision = RulesEngine.evaluate_rules(parsed_query, context)
+        if rule_decision is not None:
+            return rule_decision
         
         if not retrieved_docs:
             return DecisionResult(
                 decision="insufficient_information",
                 payment_mode="unknown",
+                amount=None,
                 justification="No relevant documents found to make a decision",
                 source_clauses=[],
-                confidence_score=0.0
+                confidence_score=0.0,
+                metadata={}
             )
         
         # Prepare context for LLM
@@ -59,9 +68,11 @@ class DecisionEvaluator:
             return DecisionResult(
                 decision="error",
                 payment_mode="unknown",
+                amount=None,
                 justification=f"Error in decision evaluation: {str(e)}",
                 source_clauses=[],
-                confidence_score=0.0
+                confidence_score=0.0,
+                metadata={}
             )
     
     def _prepare_context(self, retrieved_docs: List[RetrievalResult]) -> str:
@@ -114,7 +125,7 @@ class DecisionEvaluator:
            
         3. **Payment Mode**: "cashless" ONLY if the hospital is explicitly listed as Network/PPN. Default to "reimbursement" if unsure or non-network.
         
-        4. **Jusitification**: Must cite the exact section/clause used.
+        4. **Justification**: Must cite the exact section/clause used.
         """
     
     def _get_system_prompt(self) -> str:

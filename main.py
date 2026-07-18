@@ -7,7 +7,7 @@ from fastapi.security.api_key import APIKeyHeader
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 import os
 
 from src.api import routes
@@ -15,8 +15,8 @@ from src.api.health import router as health_router
 from src.api.middleware import RequestLoggingMiddleware
 from src.api.exceptions import setup_exception_handlers
 from src.utils.logger import get_logger, setup_logging
-from core.config import Config
-from core.models import QueryRequest, QueryType
+from src.core.config import Config
+from src.core.models import QueryRequest, QueryType
 from src.api.dependencies import get_query_service, get_document_service, init_services
 
 # Setup logging
@@ -42,14 +42,23 @@ async def get_api_key(api_key_header: str = Security(api_key_header)):
         detail="Could not validate credentials"
     )
 
+from src.utils.cloud_sync import CloudSyncService
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan events"""
     # Startup
     logger.info("Starting LLM DocWrangler application")
-    logger.info(f"Gemini Model: {Config.GEMINI_MODEL}")
+    logger.info(f"Groq Model: {Config.GROQ_MODEL}")
+    logger.info(f"Groq Vision Model: {Config.GROQ_VISION_MODEL}")
     logger.info(f"Embedding Model: {Config.EMBEDDING_MODEL}")
     logger.info(f"Vector Store: {Config.CHROMA_PERSIST_DIRECTORY}")
+    
+    # Pre-startup: Download vector store backup if S3 is configured
+    try:
+        CloudSyncService.download_vector_store()
+    except Exception as e:
+        logger.error(f"Error restoring vector database from cloud: {e}", exc_info=True)
     
     # Initialize services
     try:
@@ -60,23 +69,28 @@ async def lifespan(app: FastAPI):
     
     yield
     
-    # Shutdown
+    # Shutdown: Backup vector store
     logger.info("Shutting down LLM DocWrangler application")
+    try:
+        CloudSyncService.upload_vector_store()
+    except Exception as e:
+        logger.error(f"Error backing up vector database to cloud: {e}", exc_info=True)
 
 
 # Create FastAPI app
 app = FastAPI(
     title="LLM DocWrangler",
-    description="Insurance Document Processing with Gemini API",
+    description="Insurance Document Processing with Groq API",
     version="1.0.0",
     lifespan=lifespan
 )
 
 # Add CORS middleware
+allowed_origins = Config.ALLOWED_ORIGINS if Config.ALLOWED_ORIGINS else ["*"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=allowed_origins,
+    allow_credentials=True if allowed_origins and "*" not in allowed_origins else False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -106,7 +120,7 @@ async def webhook_health():
     return {
         "status": "healthy",
         "service": "LLM Document Processing Webhook (FastAPI)",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "endpoints": [
             "/webhook/health",
             "/webhook/query",
@@ -116,9 +130,40 @@ async def webhook_health():
     }
 
 
-@app.post("/webhook/query")
+import hmac
+import hashlib
+
+async def set_body(request: Request, body: bytes):
+    async def receive():
+        return {"type": "http.request", "body": body, "more_body": False}
+    request._receive = receive
+
+async def verify_webhook_signature(request: Request):
+    """Optional validation of webhook HMAC signature using WEBHOOK_SECRET"""
+    webhook_secret = os.getenv("WEBHOOK_SECRET")
+    if not webhook_secret:
+        return
+        
+    signature = request.headers.get("x-signature")
+    if not signature:
+        raise HTTPException(status_code=401, detail="Missing x-signature header")
+        
+    body = await request.body()
+    await set_body(request, body) # cache body so request.json() can read it again
+    
+    expected_signature = hmac.new(
+        webhook_secret.encode("utf-8"),
+        body,
+        hashlib.sha256
+    ).hexdigest()
+    
+    if not hmac.compare_digest(signature, expected_signature):
+        raise HTTPException(status_code=401, detail="Invalid webhook signature")
+
+
+@app.post("/webhook/query", dependencies=[Depends(verify_webhook_signature)])
 async def webhook_query(request: Request):
-    """Webhook query endpoint (powered by Gemini)"""
+    """Webhook query endpoint (powered by Groq)"""
     try:
         payload = await request.json()
         query_text = payload.get('query', '')
@@ -150,7 +195,7 @@ async def webhook_query(request: Request):
             "amount": result.decision.amount,
             "source_clauses": result.decision.source_clauses,
             "processing_time": result.processing_time,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "context": context
         }
     except Exception as e:
@@ -158,13 +203,13 @@ async def webhook_query(request: Request):
         return {
             "status": "error",
             "message": str(e),
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
 
 
-@app.post("/webhook/insurance-claim")
+@app.post("/webhook/insurance-claim", dependencies=[Depends(verify_webhook_signature)])
 async def webhook_insurance_claim(request: Request):
-    """Webhook insurance claim endpoint (powered by Gemini)"""
+    """Webhook insurance claim endpoint (powered by Groq)"""
     try:
         payload = await request.json()
         
@@ -180,7 +225,7 @@ async def webhook_insurance_claim(request: Request):
         if 'claim_amount' in payload:
             query_text += f"Amount: {payload['claim_amount']}. "
             
-        logger.info(f"Processing insurance claim via Gemini: {claim_id}")
+        logger.info(f"Processing insurance claim via Groq: {claim_id}")
         
         query_service = get_query_service()
         if not query_service:
@@ -209,7 +254,7 @@ async def webhook_insurance_claim(request: Request):
             "confidence_score": result.decision.confidence_score,
             "source_documents": result.decision.source_clauses,
             "processing_time_seconds": result.processing_time,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "claim_details": payload
         }
     except Exception as e:
@@ -221,7 +266,7 @@ async def webhook_insurance_claim(request: Request):
         }
 
 
-@app.post("/webhook/document-upload")
+@app.post("/webhook/document-upload", dependencies=[Depends(verify_webhook_signature)])
 async def webhook_document_upload(request: Request):
     """Webhook document upload endpoint (powered by DocumentService)"""
     # Note: This endpoint expects a file path in JSON, which assumes the file 
@@ -250,7 +295,7 @@ async def webhook_document_upload(request: Request):
             "message": message,
             "document_id": document_id,
             "file_path": file_path,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
     except Exception as e:
         logger.error(f"Error in document upload webhook: {e}")
@@ -260,11 +305,6 @@ async def webhook_document_upload(request: Request):
         }
 
 
-@app.get("/api/health")
-async def api_health_check():
-    """API Health check endpoint"""
-    return {"status": "healthy", "service": "LLM Document Processing System"}
-
 @app.get("/")
 async def root():
     """Root endpoint"""
@@ -272,12 +312,12 @@ async def root():
         "message": "LLM DocWrangler API",
         "version": "1.0.0",
         "docs": "/docs",
-        "health": "/api/health"
+        "health": "/health"
     }
 
 
 if __name__ == "__main__":
     import uvicorn
     
-    port = int(os.getenv("PORT", 8001))
+    port = int(os.getenv("PORT", 8000))
     uvicorn.run(app, host="0.0.0.0", port=port)

@@ -30,14 +30,14 @@ def test_detailed_health_endpoint(client):
     data = response.json()
     assert "status" in data
     assert "checks" in data
-    assert "gemini_api" in data["checks"]
+    assert "groq_api" in data["checks"]
     assert "vector_store" in data["checks"]
 
 
 def test_readiness_endpoint(client):
     """Test readiness probe"""
     response = client.get("/readiness")
-    # May return 503 if Gemini API not configured
+    # May return 503 if Groq API not configured
     assert response.status_code in [200, 503]
 
 

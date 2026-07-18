@@ -4,10 +4,10 @@ Health check endpoints with dependency checks
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Dict, Optional, Any
-from datetime import datetime
+from datetime import datetime, timezone
 import os
 
-from core.config import Config
+from src.core.config import Config
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -35,10 +35,10 @@ async def health_check():
     """Basic health check endpoint"""
     return {
         "status": "healthy",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "version": "1.0.0",
         "dependencies": {
-            "gemini_api": "configured",
+            "groq_api": "configured",
             "vector_store": "ready",
             "embedding_model": Config.EMBEDDING_MODEL
         }
@@ -51,21 +51,21 @@ async def detailed_health_check():
     checks = {}
     overall_status = "healthy"
     
-    # Check Gemini API configuration
+    # Check Groq API configuration
     try:
-        if Config.GEMINI_API_KEY:
-            checks["gemini_api"] = {
+        if Config.GROQ_API_KEY:
+            checks["groq_api"] = {
                 "status": "configured",
-                "model": Config.GEMINI_MODEL
+                "model": Config.GROQ_MODEL
             }
         else:
-            checks["gemini_api"] = {
+            checks["groq_api"] = {
                 "status": "not_configured",
-                "error": "GEMINI_API_KEY not set"
+                "error": "GROQ_API_KEY not set"
             }
             overall_status = "degraded"
     except Exception as e:
-        checks["gemini_api"] = {
+        checks["groq_api"] = {
             "status": "error",
             "error": str(e)
         }
@@ -123,7 +123,7 @@ async def detailed_health_check():
     
     return {
         "status": overall_status,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "version": "1.0.0",
         "checks": checks
     }
@@ -134,8 +134,8 @@ async def readiness_check():
     """Readiness probe for Kubernetes/Render"""
     # Check if critical dependencies are ready
     try:
-        if not Config.GEMINI_API_KEY:
-            raise HTTPException(status_code=503, detail="Gemini API not configured")
+        if not Config.GROQ_API_KEY:
+            raise HTTPException(status_code=503, detail="Groq API not configured")
         
         return {"status": "ready"}
     except Exception as e:

@@ -4,9 +4,9 @@ Structured logging setup
 import logging
 import sys
 import os
-from pythonjsonlogger import jsonlogger
+from pythonjsonlogger.json import JsonFormatter
 
-from core.config import Config
+from src.core.config import Config
 
 
 def setup_logging():
@@ -26,7 +26,7 @@ def setup_logging():
     
     if log_format == "json":
         # JSON formatter for production
-        formatter = jsonlogger.JsonFormatter(
+        formatter = JsonFormatter(
             '%(asctime)s %(name)s %(levelname)s %(message)s',
             timestamp=True
         )

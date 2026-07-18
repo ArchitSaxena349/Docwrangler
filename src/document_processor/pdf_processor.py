@@ -1,4 +1,4 @@
-import PyPDF2
+import pypdf
 from typing import Dict, Any
 from .base import BaseDocumentProcessor
 
@@ -10,11 +10,11 @@ class PDFProcessor(BaseDocumentProcessor):
         text = ""
         try:
             with open(file_path, 'rb') as file:
-                pdf_reader = PyPDF2.PdfReader(file)
+                pdf_reader = pypdf.PdfReader(file)
                 for page in pdf_reader.pages:
                     text += page.extract_text() + "\n"
         except Exception as e:
-            raise Exception(f"Error processing PDF: {str(e)}")
+            raise Exception(f"Error processing PDF: {str(e)}") from e
         
         return text.strip()
     
@@ -24,7 +24,7 @@ class PDFProcessor(BaseDocumentProcessor):
         
         try:
             with open(file_path, 'rb') as file:
-                pdf_reader = PyPDF2.PdfReader(file)
+                pdf_reader = pypdf.PdfReader(file)
                 
                 if pdf_reader.metadata:
                     metadata.update({

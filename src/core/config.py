@@ -19,7 +19,8 @@ class Config:
 
     # Groq / LLM
     GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-    GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile") # Updated to replace decommissioned llama3-70b-8192
+    GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")  # Updated to replace decommissioned llama3-70b-8192
+    GROQ_VISION_MODEL = os.getenv("GROQ_VISION_MODEL", "llama-3.2-11b-vision-preview")
 
     # Vector DB
     CHROMA_PERSIST_DIRECTORY = os.getenv(
@@ -32,15 +33,19 @@ class Config:
     CHUNK_SIZE = int(os.getenv("CHUNK_SIZE", "1000"))
     CHUNK_OVERLAP = int(os.getenv("CHUNK_OVERLAP", "200"))
     TOP_K_RESULTS = int(os.getenv("TOP_K_RESULTS", "5"))
-    SIMILARITY_THRESHOLD = 0.1 # Lowered from 0.3 to ensure retrieval of policy documents
+    # Fix #2: Read from env var; default 0.3 is a sensible middle ground
+    SIMILARITY_THRESHOLD = float(os.getenv("SIMILARITY_THRESHOLD", "0.3"))
 
-    # API
+    # API — Fix #3: default to 8000 to match uvicorn convention
     API_HOST = os.getenv("API_HOST", "0.0.0.0")
-    API_PORT = int(os.getenv("API_PORT", "8001"))
+    API_PORT = int(os.getenv("API_PORT", "8000"))
 
     # File uploads
     UPLOAD_DIRECTORY = os.getenv("UPLOAD_DIRECTORY", "uploads")
     MAX_FILE_SIZE = int(os.getenv("MAX_FILE_SIZE", "10485760"))  # 10MB
+
+    # CORS
+    ALLOWED_ORIGINS = [origin.strip() for origin in os.getenv("ALLOWED_ORIGINS", "").split(",") if origin.strip()]
 
 
 # Backwards-compatible alias

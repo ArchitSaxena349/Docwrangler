@@ -1,16 +1,9 @@
-export const API_BASE_URL_KEY = 'docwrangler_api_url';
-export const API_KEY_KEY = 'docwrangler_api_key';
-
 export const getApiConfig = () => {
     return {
-        baseUrl: import.meta.env.VITE_API_BASE_URL || localStorage.getItem(API_BASE_URL_KEY) || 'http://localhost:8001',
-        apiKey: localStorage.getItem(API_KEY_KEY) || '',
+        // Fallback to empty string so requests automatically route to relative path of hosting server
+        baseUrl: import.meta.env.VITE_API_BASE_URL || '',
+        apiKey: import.meta.env.VITE_API_KEY || '',
     };
-};
-
-export const setApiConfig = (baseUrl, apiKey) => {
-    localStorage.setItem(API_BASE_URL_KEY, baseUrl);
-    localStorage.setItem(API_KEY_KEY, apiKey);
 };
 
 export const sendQuery = async (query) => {
@@ -55,6 +48,26 @@ export const uploadDocument = async (file) => {
 
     if (!response.ok) {
         throw new Error(`Upload Failed: ${response.statusText}`);
+    }
+
+    return response.json();
+};
+
+export const getTaskStatus = async (documentId) => {
+    const { baseUrl, apiKey } = getApiConfig();
+    const headers = {};
+
+    if (apiKey) {
+        headers['x-api-key'] = apiKey;
+    }
+
+    const response = await fetch(`${baseUrl}/api/tasks/${documentId}`, {
+        method: 'GET',
+        headers,
+    });
+
+    if (!response.ok) {
+        throw new Error(`Failed to fetch task status: ${response.statusText}`);
     }
 
     return response.json();

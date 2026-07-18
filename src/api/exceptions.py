@@ -26,8 +26,8 @@ class VectorStoreError(Exception):
     pass
 
 
-class GeminiAPIError(Exception):
-    """Raised when Gemini API calls fail"""
+class GroqAPIError(Exception):
+    """Raised when Groq API calls fail"""
     pass
 
 
@@ -70,13 +70,13 @@ def setup_exception_handlers(app):
             }
         )
     
-    @app.exception_handler(GeminiAPIError)
-    async def gemini_api_error_handler(request: Request, exc: GeminiAPIError):
-        logger.error(f"Gemini API error: {exc}")
+    @app.exception_handler(GroqAPIError)
+    async def groq_api_error_handler(request: Request, exc: GroqAPIError):
+        logger.error(f"Groq API error: {exc}")
         return JSONResponse(
             status_code=503,
             content={
-                "error": "Gemini API unavailable",
+                "error": "Groq API unavailable",
                 "detail": str(exc),
                 "timestamp": datetime.utcnow().isoformat()
             }

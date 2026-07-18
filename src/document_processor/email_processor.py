@@ -1,5 +1,4 @@
 import email
-from email.mime.text import MIMEText
 from typing import Dict, Any
 from .base import BaseDocumentProcessor
 
@@ -31,7 +30,7 @@ class EmailProcessor(BaseDocumentProcessor):
             return text.strip()
             
         except Exception as e:
-            raise Exception(f"Error processing email: {str(e)}")
+            raise Exception(f"Error processing email: {str(e)}") from e
     
     def extract_metadata(self, file_path: str) -> Dict[str, Any]:
         """Extract metadata from email"""

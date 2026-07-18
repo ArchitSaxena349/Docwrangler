@@ -9,7 +9,7 @@ from unittest.mock import MagicMock
 import unittest
 
 # Set test environment variables
-os.environ["GEMINI_API_KEY"] = "test_key"
+os.environ["GROQ_API_KEY"] = "test_key"
 os.environ["LOG_LEVEL"] = "ERROR"
 
 # Mock heavy dependencies that might be missing
@@ -18,7 +18,7 @@ sys.modules["chromadb.config"] = MagicMock()
 sys.modules["sentence_transformers"] = MagicMock()
 
 from main import app
-from core.models import DecisionResult, ParsedQuery, QueryType, ProcessingResponse
+from src.core.models import DecisionResult, ParsedQuery, QueryType, ProcessingResponse
 
 @pytest.fixture(autouse=True)
 def mock_services():

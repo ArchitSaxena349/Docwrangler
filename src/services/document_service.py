@@ -1,11 +1,14 @@
 import os
 import uuid
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 from src.document_processor.processor_factory import ProcessorFactory
 from src.retrieval.vector_store import VectorStore
-from core.config import Config
+from src.core.config import Config
+from src.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 class DocumentService:
     """Service for document processing and management"""
@@ -13,11 +16,12 @@ class DocumentService:
     def __init__(self):
         self.vector_store = VectorStore()
     
-    async def process_document(self, file_path: str) -> str:
+    async def process_document(self, file_path: str, document_id: Optional[str] = None) -> str:
         """Process a document and add it to the vector store"""
         try:
-            # Generate unique document ID
-            document_id = str(uuid.uuid4())
+            # Generate unique document ID if not provided
+            if not document_id:
+                document_id = str(uuid.uuid4())
             
             # Get appropriate processor
             file_extension = Path(file_path).suffix
@@ -26,12 +30,20 @@ class DocumentService:
             # Extract text and metadata
             text = processor.extract_text(file_path)
             metadata = processor.extract_metadata(file_path)
-            print(f"DEBUG: Extracted text length: {len(text)} chars")
-            print(f"DEBUG: Extracted text preview: {text[:100]}")
+            logger.info(f"Extracted text length: {len(text)} chars from {file_path}")
             
             # Add document ID to metadata
             metadata['document_id'] = document_id
-            metadata['original_filename'] = Path(file_path).name
+            
+            # Recover original filename if it has uuid prefix
+            filename = Path(file_path).name
+            if len(filename) > 33 and filename[32] == '_':
+                try:
+                    int(filename[:32], 16)
+                    filename = filename[33:]
+                except ValueError:
+                    pass
+            metadata['original_filename'] = filename
             
             # Chunk the document
             chunks = processor.chunk_document(
@@ -51,25 +63,25 @@ class DocumentService:
             return document_id
             
         except Exception as e:
-            raise Exception(f"Error processing document: {str(e)}")
+            raise Exception(f"Error processing document: {str(e)}") from e
     
     async def delete_document(self, document_id: str) -> None:
         """Delete a document from the vector store"""
         try:
             self.vector_store.delete_document(document_id)
         except Exception as e:
-            raise Exception(f"Error deleting document: {str(e)}")
+            raise Exception(f"Error deleting document: {str(e)}") from e
     
     def list_documents(self) -> List[str]:
         """List all document IDs in the system"""
         try:
             return self.vector_store.list_documents()
         except Exception as e:
-            raise Exception(f"Error listing documents: {str(e)}")
+            raise Exception(f"Error listing documents: {str(e)}") from e
     
     def get_document_count(self) -> int:
         """Get total number of documents"""
         try:
             return self.vector_store.get_document_count()
         except Exception as e:
-            raise Exception(f"Error getting document count: {str(e)}")
+            raise Exception(f"Error getting document count: {str(e)}") from e

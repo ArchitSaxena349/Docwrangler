@@ -1,7 +1,7 @@
 
 import { useState, useRef } from 'react';
 import { Upload, CheckCircle, AlertCircle, Loader2, FileText } from 'lucide-react';
-import { uploadDocument } from '../api';
+import { uploadDocument, getTaskStatus } from '../api';
 
 export const UploadZone = () => {
     const [isDragging, setIsDragging] = useState(false);
@@ -34,20 +34,55 @@ export const UploadZone = () => {
         }
     };
 
+    const pollTaskStatus = async (documentId, fileName, resolve, reject) => {
+        try {
+            const task = await getTaskStatus(documentId);
+            if (task.status === 'completed') {
+                setStatus('success');
+                setMessage(`Successfully indexed: ${fileName}`);
+                setIsUploading(false);
+                resolve();
+            } else if (task.status === 'failed') {
+                setStatus('error');
+                setMessage(`Indexing failed: ${task.error || 'Unknown error'}`);
+                setIsUploading(false);
+                reject(new Error(task.error || 'Indexing failed'));
+            } else {
+                // Keep polling
+                setMessage(`Indexing document: ${fileName} ...`);
+                setTimeout(() => pollTaskStatus(documentId, fileName, resolve, reject), 2000);
+            }
+        } catch (err) {
+            setStatus('error');
+            setMessage(`Failed to check progress: ${err.message}`);
+            setIsUploading(false);
+            reject(err);
+        }
+    };
+
     const processUpload = async (file) => {
         setIsUploading(true);
         setStatus('idle');
-        setMessage('');
+        setMessage('Uploading...');
 
         try {
             const result = await uploadDocument(file);
-            setStatus('success');
-            setMessage(`Successfully indexed: ${file.name}`);
             console.log('Upload result:', result);
+            
+            if (result.status === 'processing' && result.document_id) {
+                setMessage('Indexing started in background...');
+                // Poll progress of background task
+                await new Promise((resolve, reject) => {
+                    pollTaskStatus(result.document_id, file.name, resolve, reject);
+                });
+            } else {
+                setStatus('success');
+                setMessage(`Successfully indexed: ${file.name}`);
+                setIsUploading(false);
+            }
         } catch (error) {
             setStatus('error');
             setMessage(error.message || 'Upload failed');
-        } finally {
             setIsUploading(false);
         }
     };
@@ -76,7 +111,7 @@ export const UploadZone = () => {
                     ref={fileInputRef}
                     className="hidden"
                     onChange={handleFileSelect}
-                    accept=".pdf,.docx,.doc,.txt"
+                    accept=".pdf,.docx,.doc,.txt,.jpg,.jpeg,.png"
                 />
 
                 <div className="relative flex flex-col items-center gap-5 text-center z-10">
@@ -107,7 +142,7 @@ export const UploadZone = () => {
                                 <>
                                     <span className="text-indigo-300 font-medium">Drag & drop</span> or click to browse
                                     <br />
-                                    <span className="text-xs opacity-60 mt-2 block">Supports PDF, DOCX, TXT</span>
+                                    <span className="text-xs opacity-60 mt-2 block">Supports PDF, DOCX, TXT, JPG, PNG</span>
                                 </>
                             )}
                         </p>

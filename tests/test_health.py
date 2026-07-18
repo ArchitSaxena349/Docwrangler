@@ -23,7 +23,7 @@ def test_detailed_health_check_dependencies(client):
     data = response.json()
     checks = data["checks"]
     
-    required_checks = ["gemini_api", "vector_store", "embedding_model", "file_system"]
+    required_checks = ["groq_api", "vector_store", "embedding_model", "file_system"]
     for check in required_checks:
         assert check in checks, f"Missing health check: {check}"
         assert "status" in checks[check], f"Missing status in {check}"

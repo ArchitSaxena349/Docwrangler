@@ -24,7 +24,7 @@ class DocxProcessor(BaseDocumentProcessor):
             return text.strip()
             
         except Exception as e:
-            raise Exception(f"Error processing DOCX: {str(e)}")
+            raise Exception(f"Error processing DOCX: {str(e)}") from e
     
     def extract_metadata(self, file_path: str) -> Dict[str, Any]:
         """Extract metadata from DOCX"""

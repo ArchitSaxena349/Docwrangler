@@ -5,7 +5,7 @@ from .docx_processor import DocxProcessor
 from .email_processor import EmailProcessor
 from .text_processor import TextProcessor
 from .image_processor import ImageProcessor
-from core.models import DocumentType
+from src.core.models import DocumentType
 
 class ProcessorFactory:
     """Factory for creating document processors"""

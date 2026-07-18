@@ -1,7 +1,7 @@
 import logging
 from typing import List, Dict, Any, Optional
-from core.models import DocumentChunk, RetrievalResult
-from core.config import Config
+from src.core.models import DocumentChunk, RetrievalResult
+from src.core.config import Config
 
 logger = logging.getLogger(__name__)
 
@@ -25,22 +25,19 @@ class VectorStore:
             try:
                 global chromadb, Settings, SentenceTransformer
                 import chromadb
-                print("DEBUG: chromadb imported")
+                logger.info("ChromaDB imported successfully")
                 from chromadb.config import Settings
                 from sentence_transformers import SentenceTransformer
-                print("DEBUG: sentence_transformers imported")
+                logger.info("SentenceTransformers imported successfully")
                 HEAVY_DEPS_AVAILABLE = True
             except ImportError as e:
                 logger.warning(f"Heavy dependencies not found: {e}. Running in lightweight mode.")
-                print(f"DEBUG: Heavy dependencies not found: {e}")
                 HEAVY_DEPS_AVAILABLE = False
             except Exception as e:
-                print(f"DEBUG: Other error during init: {e}")
-                logger.error(f"Error during init: {e}")
+                logger.error(f"Error during initialization of heavy dependencies: {e}", exc_info=True)
                 HEAVY_DEPS_AVAILABLE = False
 
             logger.info(f"VectorStore initialized. HEAVY_DEPS_AVAILABLE: {HEAVY_DEPS_AVAILABLE}")
-            print(f"DEBUG: VectorStore initialized. HEAVY_DEPS_AVAILABLE: {HEAVY_DEPS_AVAILABLE}")
             self._heavy_deps_checked = True
 
         if not HEAVY_DEPS_AVAILABLE:

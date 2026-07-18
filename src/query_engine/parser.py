@@ -1,15 +1,18 @@
 import re
 from typing import Dict, Any, List
-from google import genai
-from core.models import ParsedQuery, QueryType
-from core.config import Config
+from groq import Groq
+from src.core.models import ParsedQuery, QueryType
+from src.core.config import Config
+from src.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 class QueryParser:
     """Parse natural language queries into structured data"""
     
     def __init__(self):
-        self.client = genai.Client(api_key=Config.GEMINI_API_KEY)
-        self.model_name = Config.GEMINI_MODEL
+        self.client = Groq(api_key=Config.GROQ_API_KEY)
+        self.model_name = Config.GROQ_MODEL
     
     def parse_query(self, query: str) -> ParsedQuery:
         """Parse natural language query into structured format"""
@@ -87,21 +90,24 @@ class QueryParser:
         """
         
         try:
-            response = self.client.models.generate_content(
+            response = self.client.chat.completions.create(
                 model=self.model_name,
-                contents=prompt
+                messages=[
+                    {"role": "user", "content": prompt}
+                ],
+                response_format={"type": "json_object"}
             )
             
             import json
-            # Extract JSON from response
-            text = response.text
+            text = response.choices[0].message.content
             # Try to find JSON in the response
             json_start = text.find('{')
             json_end = text.rfind('}') + 1
             if json_start != -1 and json_end > json_start:
                 return json.loads(text[json_start:json_end])
             return {}
-        except:
+        except Exception as e:
+            logger.error(f"Error in LLM parsing query: {e}", exc_info=True)
             return {}
     
     def _determine_query_type(self, query: str, structured_data: Dict[str, Any]) -> QueryType:
